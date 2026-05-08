@@ -1,0 +1,48 @@
+seed: 7
+
+paths:
+  data_dir: data
+  artifact_dir: artifacts
+  medqa_all: data/medqaus_all.jsonl
+  targets: data/targets.jsonl
+  clean_queries: data/clean_queries.jsonl
+  pubmed_corpus: data/pubmed.jsonl
+  poison_docs: data/poison.jsonl
+  attack_metrics: artifacts/attack_metrics.json
+  drs_metrics: artifacts/drs_metrics.json
+  index_dir: artifacts/index
+
+medqa:
+  n_targets: 50
+  n_clean_queries: 300
+
+pubmed:
+  dataset_name: ncbi/pubmed
+  max_docs: 100000
+  min_abs_words: 20
+
+retriever:
+  model_name: facebook/contriever
+  batch_size: 32
+  device: cuda
+  top_k: 5
+  backend: numpy
+
+poisonedrag:
+  n_poison_per_target: 5
+  max_trials: 15   #50
+  max_words_for_I: 60
+  generator_model: qwen2.5:7b-instruct
+  generator_temperature: 0.8
+  verifier_temperature: 0.0
+
+llm_eval:
+  answer_model: qwen2.5:7b-instruct
+  answer_temperature: 0.0
+
+drs:
+  M: 100
+  clean_threshold_quantile: 0.99
+baseline:
+  perplexity_model: distilgpt2
+  perplexity_device: cuda

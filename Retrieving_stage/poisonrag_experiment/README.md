@@ -1,0 +1,90 @@
+# PoisonRAG Retrieval Experiment
+
+This module adds a targeted corpus-poisoning experiment on top of `TrialGPT-Retrieval`.
+
+## Goal
+
+Use the same clinical trial corpus and the same retrieval setup as TrialGPT:
+
+- patient records from `dataset/<corpus>/queries.jsonl`
+- trial corpus from `dataset/<corpus>/corpus.jsonl`
+- hybrid retrieval with `BM25 + MedCPT + reciprocal-rank fusion`
+
+Then:
+
+1. select 20 target patients
+2. generate 3 malicious synthetic trials for each patient with a local LLM
+3. inject those trials into the corpus
+4. compare retrieval recall before and after poisoning
+5. add DRS filtering and compare whether recall recovers
+
+## Attack design
+
+The malicious trials are generated with one-shot prompting from an example real trial. Each poison trial is asked to:
+
+- overlap strongly with the target patient's keywords so it is retrievable
+- look trial-like and plausible
+- keep inclusion and exclusion criteria vague
+
+The default local generator is `qwen-2.5:7b-instruct` through Ollama.
+
+## Files
+
+- [run_poisonrag_experiment.py](/Users/ningzeqiang/Downloads/TrialGPT-main/poisonrag_experiment/run_poisonrag_experiment.py)
+- [retrieval_utils.py](/Users/ningzeqiang/Downloads/TrialGPT-main/poisonrag_experiment/retrieval_utils.py)
+- [drs.py](/Users/ningzeqiang/Downloads/TrialGPT-main/poisonrag_experiment/drs.py)
+- [ollama_utils.py](/Users/ningzeqiang/Downloads/TrialGPT-main/poisonrag_experiment/ollama_utils.py)
+
+## Run
+
+From repo root:
+
+```bash
+python -m poisonrag_experiment.run_poisonrag_experiment \
+  --corpus sigir \
+  --query_type gpt-4-turbo \
+  --num_targets 20 \
+  --poisons_per_patient 3 \
+  --ollama_model qwen-2.5:7b-instruct \
+  --output_dir results/poisonrag_sigir
+```
+
+If your local Ollama tag is named differently, override `--ollama_model`.
+
+## Outputs
+
+The script writes:
+
+- `target_patients.json`
+- `poison_trials.json`
+- `*_poisoned_corpus.jsonl`
+- `clean_rankings.json`
+- `poisoned_rankings.json`
+- `drs_rankings.json`
+- `attack_stats.json`
+- `drs_metadata.json`
+- `metrics.json`
+
+`metrics.json` reports:
+
+- `recall@50`
+- `recall@100`
+- `recall@200`
+
+for:
+
+- clean baseline
+- poisoned corpus
+- poisoned corpus with DRS defense
+
+## DRS use here
+
+For each target patient:
+
+1. retrieve clean top-`K` trials from the original corpus
+2. use their MedCPT embeddings as the clean reference set
+3. fit a DRS model on those clean embeddings
+4. score candidates retrieved from the poisoned corpus
+5. filter candidates whose DRS is above the clean quantile threshold
+
+This matches the intended use of DRS as a defense against poisoned retrieval documents.

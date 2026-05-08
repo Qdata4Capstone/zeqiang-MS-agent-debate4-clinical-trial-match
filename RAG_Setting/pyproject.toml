@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "medrag-repro"
+version = "0.1.0"
+description = "Structured reproduction scaffold for Medical RAG + PoisonedRAG black-box + DRS"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "datasets>=2.18.0",
+  "transformers>=4.41.0",
+  "torch>=2.1.0",
+  "faiss-cpu>=1.8.0",
+  "openai>=1.30.0",
+  "tqdm>=4.66.0",
+  "numpy>=1.26.0",
+  "pyyaml>=6.0.1"
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
