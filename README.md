@@ -7,6 +7,7 @@ This repo contains three independent research subprojects around clinical-trial 
 - [`Retrieving_stage/`](Retrieving_stage/README.md) — TrialGPT-style clinical trial retrieval: keyword generation plus hybrid BM25/MedCPT fusion retrieval over the SIGIR and TREC Clinical Trials corpora, and a corpus-poisoning attack/defense experiment ([`poisonrag_experiment/`](Retrieving_stage/poisonrag_experiment/README.md)).
 - [`RAG_Setting/`](RAG_Setting/README.md) — reproduction of PoisonedRAG black-box knowledge poisoning attacks on a medical QA RAG pipeline (MedQA-US + PubMed + Contriever), with DRS and baseline defenses.
 - [`Agent_Setting/`](Agent_Setting/README.md) — adversarial trigger optimization against dense retrievers, plus a ReAct agent (StrategyQA) with DRS defense and baseline comparisons.
+- [`drs_defense/`](drs_defense/README.md) — shared reference implementation of the DRS (Directional Relative Shifts) poisoning defense (Algorithm 1 & Eq. 3 of the DRS paper), used by all three subprojects above instead of each maintaining its own copy.
 
 ## Shared dependency
 

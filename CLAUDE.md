@@ -9,6 +9,7 @@ This is a research repo for clinical-trial matching and retrieval-augmented gene
 - `Retrieving_stage/` — TrialGPT-style clinical trial retrieval (keyword generation + hybrid BM25/MedCPT fusion retrieval) plus a corpus-poisoning attack/defense experiment (`poisonrag_experiment/`).
 - `RAG_Setting/` — reproduction of PoisonedRAG black-box knowledge poisoning attacks on a medical QA RAG pipeline (MedQA-US + PubMed + Contriever), with DRS and baseline defenses. Installable as the `medrag-repro` package (`src/medrag_repro/`).
 - `Agent_Setting/` — adversarial trigger optimization against dense retrievers (AgentPoison-style) plus a ReAct agent (StrategyQA) with DRS defense and baseline comparisons.
+- `drs_defense/` — shared, pip-installable reference implementation of the DRS (Directional Relative Shifts) poisoning defense (paper Algorithm 1 & Eq. 3, https://openreview.net/pdf?id=2aL6gcFX7q). `Agent_Setting/ReAct/drs.py`, `RAG_Setting/src/medrag_repro/defense/drs.py`, and `Retrieving_stage/poisonrag_experiment/drs.py` are thin adapters over this module — do not reimplement DRS math locally; add it here and delegate.
 
 A root-level `src/` directory (Proposer/Skeptic agents, ranking, eval) existed previously but was deleted (`3616c88 Delete src directory`) and no longer exists — the root `README.md` now reflects this.
 
@@ -55,6 +56,6 @@ Two independent pieces:
 - `algo/trigger_optimization.py` — adversarial trigger optimization against a dense retriever (gradient-guided, perplexity-filtered), e.g. targeting `dpr-ctx_encoder-single-nq-base`. `algo/config.py` maps model codes to embedder HF repo names/paths (most are commented out; only `dpr-ctx_encoder-single-nq-base` is currently active). `algo/utils.py` holds shared helpers.
 - `ReAct/run_strategyqa_inference.py` — runs a ReAct agent over StrategyQA (data in `ReAct/database/`, prompts in `ReAct/prompts/prompts.json`) with `--backbone qwen` (Ollama) and `--model dpr`, optionally with `--enable_drs` and `--compare_defenses` against baseline defenses in `defense_baselines.py`. `drs.py` implements the DRS defense used here; `local_wikienv.py`/`wrappers.py`/`search.py` implement the ReAct environment; `ollama_client.py` wraps Ollama calls.
 
-## No tests or linters
+## Tests
 
-There is no test suite, CI config, or linter/formatter configured anywhere in this repo. Verify changes by running the relevant script(s) above end-to-end against small/sample data rather than expecting automated checks.
+`drs_defense/` has a pytest suite (`drs_defense/tests/`) verifying the DRS implementation against the paper's Algorithm 1/2 and Eq. 3, plus small parity test suites in each subproject (`Agent_Setting/tests/`, `RAG_Setting/tests/`, `Retrieving_stage/tests/`) that check their DRS adapters match `drs_defense.core` exactly. Everything else in the repo still has no test suite, CI config, or linter/formatter — verify other changes by running the relevant script(s) end-to-end against small/sample data.
