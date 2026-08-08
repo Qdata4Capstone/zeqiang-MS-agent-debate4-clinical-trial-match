@@ -6,4 +6,6 @@
 *.pyc
 */.DS_Store
 .DS_Store
-Agent_Setting/.DS_Store
+*/*/.DS_Store
+*/*.egg-info/
+*/*/*.egg-info/*
