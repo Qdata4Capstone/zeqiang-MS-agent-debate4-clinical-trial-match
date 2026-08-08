@@ -44,3 +44,10 @@ def test_low_variance_eigenbasis_clips_num_directions_to_dimensionality():
 def test_low_variance_eigenbasis_requires_at_least_two_samples():
     with pytest.raises(ValueError):
         low_variance_eigenbasis(np.zeros((1, 3)), num_directions=1)
+
+
+def test_low_variance_eigenbasis_requires_positive_num_directions():
+    X = np.array([[2.0, 2.0], [-2.0, -2.0], [1.0, -1.0], [-1.0, 1.0]])
+    standardized, _, _ = standardize(X)
+    with pytest.raises(ValueError):
+        low_variance_eigenbasis(standardized, num_directions=0)

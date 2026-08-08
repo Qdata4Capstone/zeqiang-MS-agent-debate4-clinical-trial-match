@@ -51,6 +51,8 @@ def low_variance_eigenbasis(standardized: np.ndarray, num_directions: int) -> tu
     """
     if standardized.shape[0] < 2:
         raise ValueError("At least 2 samples are required to estimate a covariance matrix.")
+    if num_directions < 1:
+        raise ValueError(f"num_directions must be >= 1, got {num_directions}")
     cov = np.cov(standardized, rowvar=False)
     eigenvalues, eigenvectors = np.linalg.eigh(cov)
     order = np.argsort(eigenvalues)

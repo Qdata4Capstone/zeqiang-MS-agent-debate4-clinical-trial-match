@@ -1,6 +1,6 @@
 # Clinical Trial Matching & RAG Robustness
 
-This repo contains three independent research subprojects around clinical-trial retrieval/matching and the robustness of retrieval-augmented generation (RAG) pipelines to adversarial poisoning. Each subproject has its own environment, dependencies, and README — see the links below for setup and usage.
+This repo contains three independent research subprojects around clinical-trial retrieval/matching and the robustness of retrieval-augmented generation (RAG) pipelines to adversarial poisoning, plus a small shared library (`drs_defense/`) that the three subprojects depend on. Each subproject has its own environment, dependencies, and README — see the links below for setup and usage.
 
 ## Subprojects
 

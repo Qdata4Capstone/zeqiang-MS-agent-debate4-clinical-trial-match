@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository overview
 
-This is a research repo for clinical-trial matching and retrieval-augmented generation (RAG) robustness experiments. It contains **three independent Python subprojects**, each with its own environment, dependencies, and entry points — there is no root-level build system, package manager, or test suite tying them together. Treat each directory below as its own project when working inside it.
+This is a research repo for clinical-trial matching and retrieval-augmented generation (RAG) robustness experiments. It contains **three independent Python subprojects** (plus a small shared library, `drs_defense/`), each with its own environment, dependencies, and entry points — there is no root-level build system, package manager, or test suite tying them together. Treat each directory below as its own project when working inside it.
 
 - `Retrieving_stage/` — TrialGPT-style clinical trial retrieval (keyword generation + hybrid BM25/MedCPT fusion retrieval) plus a corpus-poisoning attack/defense experiment (`poisonrag_experiment/`).
 - `RAG_Setting/` — reproduction of PoisonedRAG black-box knowledge poisoning attacks on a medical QA RAG pipeline (MedQA-US + PubMed + Contriever), with DRS and baseline defenses. Installable as the `medrag-repro` package (`src/medrag_repro/`).
