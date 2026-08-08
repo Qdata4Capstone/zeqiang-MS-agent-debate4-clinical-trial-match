@@ -49,7 +49,7 @@ class DRSDetector(BaseDetector):
             lam = float(self.eigvals[i])
             lam = lam if lam > self.eps else self.eps
             v = self.eigvecs[:, i]
-            scores += np.abs(Zs @ v) / lam
+            scores += np.abs(Zs @ v) / np.sqrt(lam)
         return scores
 
     def score_texts(self, texts: Sequence[str]) -> np.ndarray:

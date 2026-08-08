@@ -69,7 +69,7 @@ def parse_args():
     parser.add_argument("--drs_ref_k", type=int, default=20)
     parser.add_argument("--drs_num_directions", type=int, default=16)
     parser.add_argument("--drs_quantile", type=float, default=0.99)
-    parser.add_argument("--drs_power", type=float, default=2.0)
+    parser.add_argument("--drs_power", type=float, default=1.0)
     return parser.parse_args()
 
 

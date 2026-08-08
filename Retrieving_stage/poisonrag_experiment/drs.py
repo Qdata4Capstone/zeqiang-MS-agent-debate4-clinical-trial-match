@@ -10,7 +10,7 @@ def standardize_matrix(matrix):
     return standardized, mean, std
 
 
-def fit_drs(clean_embeddings, num_directions=32, power=2.0, eps=1e-8):
+def fit_drs(clean_embeddings, num_directions=32, power=1.0, eps=1e-8):
     """
     Fit a DRS model on clean embeddings.
 
@@ -48,11 +48,11 @@ def drs_score(embedding, drs_model):
     z_std = z_std[0]
 
     projections = np.abs(z_std @ drs_model["eigenvectors"]) ** drs_model["power"]
-    denom = np.maximum(drs_model["eigenvalues"], drs_model["eps"])
+    denom = np.sqrt(np.maximum(drs_model["eigenvalues"], drs_model["eps"]))
     return float(np.sum(projections / denom))
 
 
-def drs_threshold(clean_embeddings, quantile=0.99, num_directions=32, power=2.0):
+def drs_threshold(clean_embeddings, quantile=0.99, num_directions=32, power=1.0):
     """Fit DRS and derive a threshold from clean samples."""
     model = fit_drs(
         clean_embeddings=clean_embeddings,
