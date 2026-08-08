@@ -19,6 +19,8 @@ Algorithm 2:
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
 DEFAULT_EPS = 1e-8
@@ -56,3 +58,46 @@ def low_variance_eigenbasis(standardized: np.ndarray, num_directions: int) -> tu
     eigenvectors = eigenvectors[:, order]
     m = min(num_directions, eigenvectors.shape[1])
     return eigenvalues[:m], eigenvectors[:, :m]
+
+
+@dataclass(frozen=True)
+class DRSModel:
+    """Fitted DRS reference model: mean/std/eigenbasis of the clean data."""
+
+    mean: np.ndarray
+    std: np.ndarray
+    eigenvalues: np.ndarray
+    eigenvectors: np.ndarray
+    num_directions: int
+    eps: float = DEFAULT_EPS
+
+
+def fit_drs(clean_embeddings, num_directions: int = 100, eps: float = DEFAULT_EPS) -> DRSModel:
+    """Fit a DRS model on clean embeddings (Algorithm 1, steps 1-2)."""
+    standardized, mean, std = standardize(clean_embeddings, eps=eps)
+    eigenvalues, eigenvectors = low_variance_eigenbasis(standardized, num_directions)
+    return DRSModel(
+        mean=mean,
+        std=std,
+        eigenvalues=eigenvalues,
+        eigenvectors=eigenvectors,
+        num_directions=eigenvectors.shape[1],
+        eps=eps,
+    )
+
+
+def drs_score(embeddings, model: DRSModel):
+    """Eq. 3: DRS(z; X) = sum_i |z^T v_i| / sqrt(lambda_i).
+
+    Accepts a single embedding (d,) or a batch (n, d); returns a scalar
+    (np.float64) for the single case, or a (n,) array for the batch case.
+    """
+    Z = np.asarray(embeddings, dtype=np.float64)
+    single = Z.ndim == 1
+    if single:
+        Z = Z[None, :]
+    standardized = (Z - model.mean) / model.std
+    projections = np.abs(standardized @ model.eigenvectors)
+    scales = np.sqrt(np.maximum(model.eigenvalues, model.eps))
+    scores = (projections / scales).sum(axis=1)
+    return scores[0] if single else scores
