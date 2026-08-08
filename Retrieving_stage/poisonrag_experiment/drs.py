@@ -1,20 +1,19 @@
+from __future__ import annotations
+
 import numpy as np
-
-
-def standardize_matrix(matrix):
-    """Standardize a matrix column-wise and return matrix, mean, std."""
-    mean = matrix.mean(axis=0, keepdims=True)
-    std = matrix.std(axis=0, keepdims=True)
-    std[std < 1e-8] = 1.0
-    standardized = (matrix - mean) / std
-    return standardized, mean, std
+from drs_defense.core import DRSModel
+from drs_defense.core import drs_score as _core_drs_score
+from drs_defense.core import low_variance_eigenbasis, standardize
 
 
 def fit_drs(clean_embeddings, num_directions=32, power=1.0, eps=1e-8):
     """
     Fit a DRS model on clean embeddings.
 
-    DRS emphasizes shifts along low-variance directions in the clean data.
+    DRS emphasizes shifts along low-variance directions in the clean data
+    (paper Eq. 3: https://openreview.net/pdf?id=2aL6gcFX7q). `power` is a
+    local ablation knob (not part of the paper's formula); leave it at the
+    default 1.0 to reproduce Eq. 3 exactly.
     """
     clean_embeddings = np.asarray(clean_embeddings, dtype=np.float32)
     if clean_embeddings.ndim != 2:
@@ -22,20 +21,14 @@ def fit_drs(clean_embeddings, num_directions=32, power=1.0, eps=1e-8):
     if len(clean_embeddings) < 2:
         raise ValueError("At least two clean embeddings are required for DRS.")
 
-    x_std, mean, std = standardize_matrix(clean_embeddings)
-    covariance = np.cov(x_std, rowvar=False)
-    eigenvalues, eigenvectors = np.linalg.eigh(covariance)
+    standardized, mean, std = standardize(clean_embeddings, eps=eps)
+    eigenvalues, eigenvectors = low_variance_eigenbasis(standardized, num_directions)
 
-    order = np.argsort(eigenvalues)
-    eigenvalues = eigenvalues[order]
-    eigenvectors = eigenvectors[:, order]
-
-    max_dirs = min(num_directions, eigenvectors.shape[1])
     return {
         "mean": mean,
         "std": std,
-        "eigenvalues": eigenvalues[:max_dirs],
-        "eigenvectors": eigenvectors[:, :max_dirs],
+        "eigenvalues": eigenvalues,
+        "eigenvectors": eigenvectors,
         "power": power,
         "eps": eps,
     }
@@ -43,10 +36,20 @@ def fit_drs(clean_embeddings, num_directions=32, power=1.0, eps=1e-8):
 
 def drs_score(embedding, drs_model):
     """Compute DRS for a single embedding."""
+    if drs_model["power"] == 1.0:
+        model = DRSModel(
+            mean=drs_model["mean"],
+            std=drs_model["std"],
+            eigenvalues=drs_model["eigenvalues"],
+            eigenvectors=drs_model["eigenvectors"],
+            num_directions=drs_model["eigenvectors"].shape[1],
+            eps=drs_model["eps"],
+        )
+        return float(_core_drs_score(embedding, model))
+
     z = np.asarray(embedding, dtype=np.float32).reshape(1, -1)
     z_std = (z - drs_model["mean"]) / drs_model["std"]
     z_std = z_std[0]
-
     projections = np.abs(z_std @ drs_model["eigenvectors"]) ** drs_model["power"]
     denom = np.sqrt(np.maximum(drs_model["eigenvalues"], drs_model["eps"]))
     return float(np.sum(projections / denom))
