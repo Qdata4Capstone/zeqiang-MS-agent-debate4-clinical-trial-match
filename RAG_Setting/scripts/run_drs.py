@@ -7,7 +7,7 @@ import numpy as np
 
 from medrag_repro.config import load_config
 from medrag_repro.datamodels import CorpusDoc, PoisonDoc, QAItem
-from medrag_repro.defense.drs import compute_drs_reference
+from medrag_repro.defense.drs import DRSDetector
 from medrag_repro.evaluation.rag_eval import evaluate_attack
 from medrag_repro.llm.client import load_openai_client
 from medrag_repro.retriever.contriever import ContrieverEncoder
@@ -43,14 +43,20 @@ def main() -> None:
             clean_ref_map.setdefault(doc_id, text)
     clean_ref_texts = list(clean_ref_map.values())
 
-    drs_ref = compute_drs_reference(clean_ref_texts, encoder, cfg["drs"]["M"])
-    clean_scores = drs_ref["clean_scores"]
-    score_fn = drs_ref["score_fn"]
-    threshold = float(np.quantile(clean_scores, cfg["drs"]["clean_threshold_quantile"]))
+    detector = DRSDetector(
+        encoder=encoder,
+        M=cfg["drs"]["M"],
+        clean_quantile=cfg["drs"]["clean_threshold_quantile"],
+    )
+    detector.fit(clean_ref_texts)
 
-    poison_scores = score_fn([p.full_text for p in poison])
-    detected = [bool(s > threshold) for s in poison_scores]
+    poison_texts = [p.full_text for p in poison]
+    poison_scores = detector.score_texts(poison_texts)
+    detected = detector.detect(poison_texts)
     kept_poison = [p for p, d in zip(poison, detected) if not d]
+
+    clean_scores = detector.clean_scores
+    threshold = detector.upper_threshold
 
     post = evaluate_attack(
         client=client,
