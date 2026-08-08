@@ -101,3 +101,26 @@ def drs_score(embeddings, model: DRSModel):
     scales = np.sqrt(np.maximum(model.eigenvalues, model.eps))
     scores = (projections / scales).sum(axis=1)
     return scores[0] if single else scores
+
+
+def quantile_threshold(scores, quantile: float = 0.99) -> float:
+    """Algorithm 2, step 4: tau = q-th quantile of clean DRS scores."""
+    return float(np.quantile(np.asarray(scores, dtype=np.float64), quantile))
+
+
+def fit_drs_with_threshold(
+    clean_embeddings,
+    num_directions: int = 100,
+    quantile: float = 0.99,
+    eps: float = DEFAULT_EPS,
+) -> tuple[DRSModel, np.ndarray, float]:
+    """Algorithm 2, steps 1-4: fit + score clean data + derive tau."""
+    model = fit_drs(clean_embeddings, num_directions=num_directions, eps=eps)
+    clean_scores = drs_score(clean_embeddings, model)
+    threshold = quantile_threshold(clean_scores, quantile)
+    return model, clean_scores, threshold
+
+
+def is_flagged(scores, threshold: float) -> np.ndarray:
+    """Algorithm 2, step 5: reject z if DRS(z; X_clean) > tau."""
+    return np.asarray(scores) > threshold
