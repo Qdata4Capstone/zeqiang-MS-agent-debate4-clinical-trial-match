@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "drs-defense"
+version = "0.1.0"
+description = "Reference implementation of the DRS (Directional Relative Shifts) poisoning defense from 'Understanding Data Poisoning Attacks for RAG: Insights and Algorithms' (ICLR 2025 submission, openreview.net/pdf?id=2aL6gcFX7q)"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
