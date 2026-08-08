@@ -1,6 +1,12 @@
-from dataclasses import dataclass
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 
 import torch
+
+from drs_defense.core import DRSModel
+from drs_defense.core import drs_score as _drs_score_np
+from drs_defense.core import fit_drs_with_threshold
 
 
 @dataclass
@@ -13,51 +19,37 @@ class DRSStats:
     clean_scores: torch.Tensor
     false_positive_rate: float
     num_directions: int
-
-
-def _standardize(x: torch.Tensor, mean: torch.Tensor, std: torch.Tensor) -> torch.Tensor:
-    return (x - mean) / std.clamp_min(1e-6)
-
-
-def score_drs(embeddings: torch.Tensor, stats: DRSStats) -> torch.Tensor:
-    if embeddings.dim() == 1:
-        embeddings = embeddings.unsqueeze(0)
-
-    z = _standardize(embeddings, stats.mean, stats.std)
-    projections = torch.abs(z @ stats.eigenvectors[:, : stats.num_directions])
-    scales = torch.sqrt(stats.eigenvalues[: stats.num_directions].clamp_min(1e-8))
-    return (projections / scales).sum(dim=1)
+    _np_model: DRSModel = field(repr=False)
 
 
 def fit_drs(clean_embeddings: torch.Tensor, num_directions: int = 200, quantile: float = 0.99) -> DRSStats:
     if clean_embeddings.dim() != 2:
         raise ValueError("clean_embeddings must be a 2D tensor")
 
-    clean_embeddings = clean_embeddings.float()
-    mean = clean_embeddings.mean(dim=0)
-    std = clean_embeddings.std(dim=0, unbiased=False)
-    standardized = _standardize(clean_embeddings, mean, std)
+    device = clean_embeddings.device
+    clean_np = clean_embeddings.detach().cpu().double().numpy()
 
-    cov = torch.cov(standardized.T)
-    eigenvalues, eigenvectors = torch.linalg.eigh(cov)
-
-    max_directions = min(num_directions, eigenvectors.shape[1])
-    trimmed_vectors = eigenvectors[:, :max_directions]
-    trimmed_values = eigenvalues[:max_directions]
-
-    clean_scores = (
-        torch.abs(standardized @ trimmed_vectors) / torch.sqrt(trimmed_values.clamp_min(1e-8))
-    ).sum(dim=1)
-    threshold = torch.quantile(clean_scores, quantile).item()
-    false_positive_rate = (clean_scores > threshold).float().mean().item()
+    model, clean_scores_np, threshold = fit_drs_with_threshold(
+        clean_np, num_directions=num_directions, quantile=quantile,
+    )
 
     return DRSStats(
-        mean=mean,
-        std=std,
-        eigenvectors=eigenvectors,
-        eigenvalues=eigenvalues,
+        mean=torch.from_numpy(model.mean).float().to(device),
+        std=torch.from_numpy(model.std).float().to(device),
+        eigenvectors=torch.from_numpy(model.eigenvectors).float().to(device),
+        eigenvalues=torch.from_numpy(model.eigenvalues).float().to(device),
         threshold=threshold,
-        clean_scores=clean_scores,
-        false_positive_rate=false_positive_rate,
-        num_directions=max_directions,
+        clean_scores=torch.from_numpy(clean_scores_np).float().to(device),
+        false_positive_rate=float((clean_scores_np > threshold).mean()),
+        num_directions=model.num_directions,
+        _np_model=model,
     )
+
+
+def score_drs(embeddings: torch.Tensor, stats: DRSStats) -> torch.Tensor:
+    if embeddings.dim() == 1:
+        embeddings = embeddings.unsqueeze(0)
+
+    device = embeddings.device
+    scores_np = _drs_score_np(embeddings.detach().cpu().double().numpy(), stats._np_model)
+    return torch.from_numpy(scores_np).float().to(device)
