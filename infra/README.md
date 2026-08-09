@@ -60,3 +60,41 @@ JSON output (vs. `jsonl.py`'s ASCII-escaping default), blank-line skipping
 in the JSONL reader, and automatic dataclass `asdict()` conversion when
 writing JSONL rows. Deferred to a later phase, same as the
 `keyword_generation.py` duplicate above.
+
+## `rag_infra.defenses`
+
+`l2_norm.py` — `l2_norm_score(embeddings)`: row-wise Euclidean (L2) norm of an
+embedding matrix (`np.linalg.norm(embeddings, axis=1)`), promoting a 1-D input
+to a single row first. Used as a poisoning-detection score: outlier
+embeddings tend to have unusually large or small norms relative to the clean
+corpus.
+
+Two adapters delegate to it instead of reimplementing the math:
+
+- `RAG_Setting/src/medrag_repro/defense/l2_norm.py`'s `L2NormDetector` —
+  encodes texts with the Contriever encoder, calls `l2_norm_score` on the
+  resulting `float64` matrix, and fits two-sided quantile thresholds on the
+  clean-score distribution.
+- `Agent_Setting/ReAct/defense_baselines.py`'s `l2_norm_scores` — converts a
+  `torch.Tensor` of embeddings to a NumPy array, calls `l2_norm_score`, and
+  converts the result back to a `torch.Tensor` on the original device.
+
+Two other baseline defenses live alongside `l2_norm` in both subprojects but
+were evaluated and NOT extracted here:
+
+- `l2_distance` — `RAG_Setting/src/medrag_repro/defense/l2_distance.py`'s
+  `L2DistanceDetector` scores each text by its distance to the *centroid* of
+  the clean embeddings (`np.linalg.norm(X - self.centroid, axis=1)`), while
+  `Agent_Setting/ReAct/defense_baselines.py`'s `l2_distance_scores` scores by
+  distance to the *nearest* clean-reference embedding
+  (`torch.cdist(embeddings, clean_reference).min(dim=1)`). These are
+  different formulas (centroid distance vs. nearest-neighbor distance), not
+  duplicates, so there is nothing to fold into a shared function.
+- `perplexity` — `RAG_Setting/src/medrag_repro/defense/perplexity.py`'s
+  `PerplexityDetector` and `Agent_Setting/ReAct/defense_baselines.py`'s
+  `PerplexityScorer` both compute the same underlying score
+  (`exp(causal-LM loss)` via a Hugging Face `AutoModelForCausalLM` forward
+  pass with `labels=input_ids`), but extracting it would pull `torch` and
+  `transformers` into `rag_infra`'s dependencies. Deferred alongside the
+  `infra/retrieval/` embedding-model code (Phase 3), pending a decision on
+  adding `torch`+`transformers` as hard `rag_infra` dependencies.

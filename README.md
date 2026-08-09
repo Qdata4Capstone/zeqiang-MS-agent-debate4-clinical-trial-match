@@ -8,7 +8,7 @@ This repo contains three independent research subprojects around clinical-trial 
 - [`RAG_Setting/`](RAG_Setting/README.md) — reproduction of PoisonedRAG black-box knowledge poisoning attacks on a medical QA RAG pipeline (MedQA-US + PubMed + Contriever), with DRS and baseline defenses.
 - [`Agent_Setting/`](Agent_Setting/README.md) — adversarial trigger optimization against dense retrievers, plus a ReAct agent (StrategyQA) with DRS defense and baseline comparisons.
 - [`drs_defense/`](drs_defense/README.md) — shared reference implementation of the DRS (Directional Relative Shifts) poisoning defense (Algorithm 1 & Eq. 3 of the DRS paper), used by all three subprojects above instead of each maintaining its own copy.
-- [`infra/`](infra/README.md) — shared `rag_infra` package holding LLM-client infrastructure (OpenAI-compatible chat completion, native Ollama completion, Ollama JSON generation) and dataset file-I/O helpers (`rag_infra.data.jsonl`: JSONL/JSON/TSV loaders for the BEIR/SIGIR/TREC dataset layout), used by all three subprojects instead of each maintaining its own copy.
+- [`infra/`](infra/README.md) — shared `rag_infra` package holding LLM-client infrastructure (OpenAI-compatible chat completion, native Ollama completion, Ollama JSON generation), dataset file-I/O helpers (`rag_infra.data.jsonl`: JSONL/JSON/TSV loaders for the BEIR/SIGIR/TREC dataset layout), and defense-scoring math (`rag_infra.defenses.l2_norm`: L2-norm poisoning-detection scoring), used by all three subprojects instead of each maintaining its own copy.
 
 ## Shared dependency
 
