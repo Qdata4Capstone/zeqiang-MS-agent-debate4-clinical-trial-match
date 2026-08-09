@@ -198,6 +198,28 @@ adapter, run the full test surface, only then delete the original.
    in particular `ReAct/run_strategyqa_inference.py`, before deleting
    `trigger_optimization.py`, `utils.py`, and `config.py`.
 
+   **Outcome (implemented):** confirmed zero importers repo-wide (not just
+   within `Agent_Setting/`) before deleting; `CLAUDE.md` and both root and
+   `Agent_Setting/README.md` updated to no longer describe the deleted
+   capability (the final review caught a root-`README.md` miss the
+   deletion's own path-shaped verification grep couldn't detect, since it
+   was a prose description, not an import). `Agent_Setting/environment.yml`
+   deliberately left untouched — see the pre-triaged inputs below for
+   phase 7. See
+   `docs/superpowers/plans/2026-08-09-delete-agent-setting-algo.md`.
+
+   **Pre-triaged for phase 7** (verified during phase 6's final review):
+   safe to prune from `environment.yml` — `wandb`, `autogen==1.0.16`,
+   `pyautogen==0.2.0`, `wolframalpha==5.0.0`, `casadi==3.6.5`,
+   `shapely==2.0.5` (zero references remain anywhere in tracked `.py`
+   files). Do NOT prune `gym==0.26.2` — load-bearing for
+   `ReAct/local_wikienv.py` (`WikiEnv(gym.Env)`, `textSpace(gym.spaces.Space)`)
+   and all five wrapper classes in `ReAct/wrappers.py`. The `agentpoison`
+   conda env name (`environment.yml`, `Agent_Setting/README.md`,
+   `CLAUDE.md`) is now a vestige of the deleted code but renaming it
+   breaks existing local envs — bundle with the dependency prune, don't
+   do alone.
+
 7. **Dead-code sweep** — run the `vulture`-based scan (per the prior
    cleanup spec) across the new layout, now that relocation may have
    orphaned additional code. Manually triage every hit before removal,
