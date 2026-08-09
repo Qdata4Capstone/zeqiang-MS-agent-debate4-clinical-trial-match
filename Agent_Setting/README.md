@@ -18,26 +18,7 @@ ollama pull qwen2.5:7b-instruct
 
 ## 🚀 Quick Start
 
-### 1. Trigger Optimization
-
-Run trigger optimization for the StrategyQA / DPR setting:
-
-```bash
-python algo/trigger_optimization.py \
-  --agent qa \
-  --algo ap \
-  --model dpr-ctx_encoder-single-nq-base \
-  --save_dir ./results \
-  --ppl_filter \
-  --target_gradient_guidance \
-  --asr_threshold 0.5 \
-  --num_adv_passage_tokens 10 \
-  --golden_trigger \
-  -w \
-  -p
-```
-
-### 2. ReAct-StrategyQA with DRS and Defense Baselines
+### 1. ReAct-StrategyQA with DRS and Defense Baselines
 
 ```bash
 python ReAct/run_strategyqa_inference.py \
