@@ -4,12 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository overview
 
-This is a research repo for clinical-trial matching and retrieval-augmented generation (RAG) robustness experiments. It contains **three independent Python subprojects** (plus a small shared library, `drs_defense/`), each with its own environment, dependencies, and entry points — there is no root-level build system, package manager, or test suite tying them together. Treat each directory below as its own project when working inside it.
+This is a research repo for clinical-trial matching and retrieval-augmented generation (RAG) robustness experiments. It contains **three independent Python subprojects** (plus two small shared libraries, `drs_defense/` and `infra/`), each with its own environment, dependencies, and entry points — there is no root-level build system, package manager, or test suite tying them together. Treat each directory below as its own project when working inside it.
 
 - `Retrieving_stage/` — TrialGPT-style clinical trial retrieval (keyword generation + hybrid BM25/MedCPT fusion retrieval) plus a corpus-poisoning attack/defense experiment (`poisonrag_experiment/`).
 - `RAG_Setting/` — reproduction of PoisonedRAG black-box knowledge poisoning attacks on a medical QA RAG pipeline (MedQA-US + PubMed + Contriever), with DRS and baseline defenses. Installable as the `medrag-repro` package (`src/medrag_repro/`).
 - `Agent_Setting/` — adversarial trigger optimization against dense retrievers (AgentPoison-style) plus a ReAct agent (StrategyQA) with DRS defense and baseline comparisons.
 - `drs_defense/` — shared, pip-installable reference implementation of the DRS (Directional Relative Shifts) poisoning defense (paper Algorithm 1 & Eq. 3, https://openreview.net/pdf?id=2aL6gcFX7q). `Agent_Setting/ReAct/drs.py`, `RAG_Setting/src/medrag_repro/defense/drs.py`, and `Retrieving_stage/poisonrag_experiment/drs.py` are thin adapters over this module — do not reimplement DRS math locally; add it here and delegate.
+- `infra/` — shared, pip-installable `rag_infra` package holding LLM-client infrastructure: OpenAI-compatible chat completion (`rag_infra.llm.client`), native Ollama completion (`rag_infra.llm.ollama`), and Ollama JSON generation (`rag_infra.llm.json_client`). `RAG_Setting/src/medrag_repro/llm/client.py`, `Agent_Setting/ReAct/ollama_client.py`, and `Retrieving_stage/poisonrag_experiment/ollama_utils.py` are thin adapters over this module — do not reimplement LLM-client code locally; add it here and delegate.
 
 A root-level `src/` directory (Proposer/Skeptic agents, ranking, eval) existed previously but was deleted (`3616c88 Delete src directory`) and no longer exists — the root `README.md` now reflects this.
 
@@ -58,4 +59,4 @@ Two independent pieces:
 
 ## Tests
 
-`drs_defense/` has a pytest suite (`drs_defense/tests/`) verifying the DRS implementation against the paper's Algorithm 1/2 and Eq. 3, plus small parity test suites in each subproject (`Agent_Setting/tests/`, `RAG_Setting/tests/`, `Retrieving_stage/tests/`) that check their DRS adapters match `drs_defense.core` exactly. Everything else in the repo still has no test suite, CI config, or linter/formatter — verify other changes by running the relevant script(s) end-to-end against small/sample data.
+`drs_defense/` has a pytest suite (`drs_defense/tests/`) verifying the DRS implementation against the paper's Algorithm 1/2 and Eq. 3, plus small parity test suites in each subproject (`Agent_Setting/tests/`, `RAG_Setting/tests/`, `Retrieving_stage/tests/`) that check their DRS adapters match `drs_defense.core` exactly. `infra/` also has a pytest suite (`infra/tests/`) covering the `rag_infra.llm` clients. Everything else in the repo still has no test suite, CI config, or linter/formatter — verify other changes by running the relevant script(s) end-to-end against small/sample data.

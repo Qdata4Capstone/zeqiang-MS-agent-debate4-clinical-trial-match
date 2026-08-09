@@ -23,3 +23,11 @@ The remaining per-project client files (`RAG_Setting/src/medrag_repro/llm/client
 `Agent_Setting/ReAct/ollama_client.py`, `Retrieving_stage/poisonrag_experiment/ollama_utils.py`)
 are thin re-export adapters over this package that preserve each subproject's
 existing call signatures.
+
+`Retrieving_stage/trialgpt_retrieval/keyword_generation.py`'s `generate_with_ollama`
+is a known fourth Ollama-client duplicate (same `urllib` POST to `/api/generate`,
+`"format": "json"`, and empty-response check as `json_client.generate_json`) that was
+deliberately left unextracted here: it returns raw text instead of parsed JSON,
+hardcodes `temperature: 0`, flattens a messages list into `system`/`prompt`, and raises
+`RuntimeError` instead of `OllamaError`, so folding it into `json_client` would be a
+behavior change. Deferred to a later phase.
