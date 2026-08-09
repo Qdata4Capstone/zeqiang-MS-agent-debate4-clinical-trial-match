@@ -163,6 +163,36 @@ adapter, run the full test surface, only then delete the original.
    quantile/perplexity math is equivalent, otherwise keep it as a
    distinct file in the same package.
 
+   **Outcome (implemented, narrowed):** only `l2_norm` was a genuine
+   duplicate — `RAG_Setting`'s `np.linalg.norm(X, axis=1)` and
+   `Agent_Setting`'s `torch.norm(embeddings.float(), dim=1)` compute the
+   identical formula, extracted as `rag_infra.defenses.l2_norm.l2_norm_score`
+   with both subprojects' detectors delegating to it (mirroring the
+   `drs_defense`/`ReAct/drs.py` numpy-core + torch-adapter pattern). Kept
+   separate:
+   - **`l2_distance`**: `RAG_Setting`'s `L2DistanceDetector` scores
+     distance-to-centroid-of-clean-embeddings; `Agent_Setting`'s
+     `defense_baselines.l2_distance_scores` scores
+     distance-to-nearest-individual-clean-embedding (KNN-style, via
+     `torch.cdist(...).min(dim=1)`) — different statistics, not a
+     duplicate, same situation as phase 4's two "PoisonedRAG" attacks.
+     Note found during final review: the *actual* centroid-distance
+     duplicate of `L2DistanceDetector` is
+     `Agent_Setting/algo/trigger_optimization.py`'s fitness function
+     (`torch.norm(embeddings - mean_embedding, dim=1)`, line ~69), not
+     `defense_baselines.py` — but `algo/` is slated for full deletion in
+     phase 6, so this potential consolidation is moot once that lands.
+   - **`perplexity`**: `RAG_Setting`'s `PerplexityDetector` and
+     `Agent_Setting`'s `PerplexityScorer` do compute the same core value
+     (`exp(causal-LM loss)`), but extracting it would be the first
+     `rag_infra` module needing `torch`+`transformers` as hard
+     dependencies — deferred alongside phase 3 for the same reason.
+   - `RAG_Setting`'s `BaseDetector` (`defense/common.py`) stays
+     `RAG_Setting`-local — a generic ABC, but nothing outside
+     `RAG_Setting` uses an equivalent pattern, so there's nothing to
+     deduplicate. See
+     `docs/superpowers/plans/2026-08-09-defenses-l2-norm-extraction.md`.
+
 6. **Delete `Agent_Setting/algo/`** — first confirm (via grep across the
    repo, not assumption) that nothing outside `algo/` imports from it,
    in particular `ReAct/run_strategyqa_inference.py`, before deleting
