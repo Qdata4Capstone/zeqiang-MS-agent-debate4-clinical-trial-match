@@ -12,4 +12,5 @@ torch==2.2.2
 tqdm==4.65.0
 transformers==4.39.3
 -e ../drs_defense
+-e ../infra
 pytest
