@@ -6,6 +6,7 @@ import numpy as np
 
 from medrag_repro.defense.common import BaseDetector
 from medrag_repro.retriever.contriever import ContrieverEncoder
+from rag_infra.defenses.l2_norm import l2_norm_score
 
 
 class L2NormDetector(BaseDetector):
@@ -21,4 +22,4 @@ class L2NormDetector(BaseDetector):
 
     def score_texts(self, texts: Sequence[str]) -> np.ndarray:
         X = self.encoder.encode(list(texts), normalize=False).astype(np.float64)
-        return np.linalg.norm(X, axis=1)
+        return l2_norm_score(X)
