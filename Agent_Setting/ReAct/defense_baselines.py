@@ -3,6 +3,8 @@ from dataclasses import dataclass
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from rag_infra.defenses.l2_norm import l2_norm_score as _l2_norm_score_np
+
 
 @dataclass
 class QuantileStats:
@@ -43,9 +45,9 @@ def fit_two_sided_quantile(clean_scores: torch.Tensor, quantile: float = 0.99) -
 
 
 def l2_norm_scores(embeddings: torch.Tensor) -> torch.Tensor:
-    if embeddings.dim() == 1:
-        embeddings = embeddings.unsqueeze(0)
-    return torch.norm(embeddings.float(), dim=1)
+    device = embeddings.device
+    scores_np = _l2_norm_score_np(embeddings.detach().cpu().float().numpy())
+    return torch.from_numpy(scores_np).float().to(device)
 
 
 def l2_distance_scores(embeddings: torch.Tensor, clean_reference: torch.Tensor) -> torch.Tensor:
