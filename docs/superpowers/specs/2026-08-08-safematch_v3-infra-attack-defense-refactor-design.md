@@ -108,6 +108,16 @@ adapter, run the full test surface, only then delete the original.
 2. **`infra/data/`** — relocate dataset loaders (MedQA/PubMed, SIGIR/TREC,
    StrategyQA) with straight code motion and updated import paths.
 
+   **Outcome (implemented, narrowed):** research before writing the phase 2
+   plan found this assumption didn't hold uniformly. `RAG_Setting`'s
+   `medqa_loader.py`/`pubmed_loader.py` are coupled to subproject-specific
+   dataclasses (`QAItem`, `CorpusDoc`) and `Agent_Setting/ReAct`'s
+   StrategyQA loading is a method on the stateful `WikiEnv` class — neither
+   is a clean standalone relocation. Only `Retrieving_stage`'s four
+   dependency-free file-I/O helpers (`load_jsonl`, `dump_json`, `load_qrels`,
+   `load_queries_and_keywords`) were extracted, as `rag_infra.data.jsonl`.
+   See `docs/superpowers/plans/2026-08-09-infra-data-jsonl-extraction.md`.
+
 3. **`infra/retrieval/`** — relocate BM25/MedCPT, Contriever, and DPR
    backends as separate files (relocated, not merged into one algorithm).
    Highest-risk step: `Agent_Setting` pins Python 3.9 + CUDA-specific
@@ -115,11 +125,38 @@ adapter, run the full test surface, only then delete the original.
    package's code must stay syntax-compatible with both; each subproject
    still installs it into its own conda env (no environment unification).
 
+   **Outcome (skipped, on hold):** research found `RAG_Setting`'s
+   `ContrieverEncoder`/`retriever/index.py` and `Retrieving_stage`'s
+   BM25/MedCPT code in `retrieval_utils.py` are both genuinely standalone
+   and relocatable, but `Agent_Setting`'s DPR-based retrieval is a method
+   (`WikiEnv._embed_text`) entangled with the stateful ReAct environment
+   (DRS fitting, defense baselines, hardcoded `.to("cuda")`) — not
+   separable without restructuring that class, which is out of scope. This
+   phase would also be the first to add real ML dependencies (`torch`,
+   `transformers`, `faiss`, `nltk`, `rank_bm25`) to `rag_infra`, with
+   `RAG_Setting` and `Retrieving_stage` currently pinning slightly
+   different `torch`/`transformers` versions. Deferred rather than
+   attempted narrowed, pending a decision on how to handle the dependency
+   footprint (e.g. optional extras) — not started.
+
 4. **`attacks/poisonedrag.py`** — consolidate `RAG_Setting`'s
    `poisonedrag_blackbox.py` and `Retrieving_stage`'s inline poison-gen
    logic (currently inside `run_poisonrag_experiment.py`) into one
    canonical implementation, proven via parity tests against both
    originals' outputs before either is deleted.
+
+   **Outcome (skipped, not applicable):** research found these are not
+   duplicate implementations of one technique — they're different attacks.
+   `RAG_Setting`'s `PoisonedRAGBlackBoxGenerator` implements the actual
+   PoisonedRAG black-box algorithm (generate candidate → verify the target
+   LLM answers the target wrong MCQ option → retry up to `max_trials`),
+   coupled to MCQ-specific dataclasses (`QAItem`, `PoisonDoc`).
+   `Retrieving_stage`'s `generate_poison_trials` is a one-shot synthetic
+   clinical-trial-record generator with no verify/retry loop at all — it
+   doesn't implement the PoisonedRAG algorithm's core mechanism, despite
+   the similar naming. There is no shared output ever produced to prove
+   parity against, so a "canonical merge" isn't a coherent goal here; both
+   implementations are left as-is.
 
 5. **`defenses/`** — relocate `l2_norm`/`l2_distance`/`perplexity` from
    `RAG_Setting`; merge `Agent_Setting`'s `defense_baselines.py` in if its
