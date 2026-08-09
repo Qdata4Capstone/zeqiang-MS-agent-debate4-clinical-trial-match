@@ -1,3 +1,4 @@
 -e .
 -e ../drs_defense
+-e ../infra
 pytest
