@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-infra"
+version = "0.1.0"
+description = "Shared LLM-client infrastructure (OpenAI-compatible chat completion and native Ollama completion clients) used across Retrieving_stage, RAG_Setting, and Agent_Setting."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "openai>=1.30.0",
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
