@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-defenses"
+version = "0.1.0"
+description = "Shared poisoning-defense detector classes and baseline utilities: BaseDetector, L2-norm/L2-distance/perplexity detectors, and quantile-fitting baselines used across RAG_Setting and Agent_Setting."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "numpy>=1.24",
+  "torch>=2.0.1",
+  "transformers>=4.39.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
