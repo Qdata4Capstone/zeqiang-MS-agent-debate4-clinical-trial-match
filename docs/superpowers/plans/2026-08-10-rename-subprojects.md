@@ -69,7 +69,7 @@ pytest strategyqa_agent/tests/ -v
 pytest trial_retrieval/tests/ -v
 ```
 
-Expected: all PASS (same counts as before the rename — 19, 14, 19, 14, 5, 7, 6 respectively — confirming nothing broke).
+Expected: all PASS (same counts as before the rename — 19, 14, 17, 14, 5, 7, 6 respectively = 82 total — confirming nothing broke; `infra/tests/` is 17, not 19, since commit `ccb9e7e` legitimately dropped an orphaned test earlier in Phase 7b, before this plan was written).
 
 - [ ] **Step 5: Verify scope**
 
@@ -173,7 +173,7 @@ pytest strategyqa_agent/tests/ -v
 pytest trial_retrieval/tests/ -v
 ```
 
-Expected: all PASS (same 84-test total as before this phase).
+Expected: all PASS (same 82-test total as before this phase — 19/14/17/14/5/7/6).
 
 - [ ] **Step 2: Confirm the old directory names are gone from the filesystem and from git tracking**
 
