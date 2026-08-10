@@ -6,7 +6,7 @@ This repo showcases retrieval-augmented generation (RAG) data-poisoning **attack
 
 | Use case | RAG task | Attack | Defenses evaluated |
 | --- | --- | --- | --- |
-| [`use-cases/trial_retrieval/`](use-cases/trial_retrieval/README.md) | Clinical-trial retrieval (BM25 + MedCPT hybrid fusion, SIGIR/TREC corpora) | Synthetic poisoned trial-record injection ([`poisonrag_experiment/`](use-cases/trial_retrieval/poisonrag_experiment/README.md)) — one-shot LLM-generated fake trial records engineered to overlap a target patient's keywords | DRS (`recall@{50,100,200}` before/after poisoning, with/without DRS filtering) |
+| [`use-cases/trial_retrieval/`](use-cases/trial_retrieval/README.md) | Clinical-trial retrieval (BM25 + MedCPT hybrid fusion, SIGIR/TREC corpora) | Synthetic poisoned trial-record injection ([`poisonrag_experiment/`](use-cases/trial_retrieval/poisonrag_experiment/README.md)) — one-shot LLM-generated fake trial records engineered to overlap a target patient's keywords | DRS, perplexity, L2-norm, L2-distance (`recall@{50,100,200}` under each, `--compare_defenses`) |
 | [`use-cases/medqa_rag/`](use-cases/medqa_rag/README.md) | Medical QA (MedQA-US + PubMed + Contriever) | PoisonedRAG black-box knowledge poisoning — generate candidate text → verify the target LLM answers wrong → retry loop | DRS, perplexity, L2-norm, L2-distance |
 | [`use-cases/strategyqa_agent/`](use-cases/strategyqa_agent/README.md) | ReAct search agent (StrategyQA) | Backdoor-trigger document injection — a poisoned document instructs the agent to answer "I don't know" whenever a trigger phrase appears in the question (BadChain-style fixed phrase, or a pre-computed AgentPoison-style adversarial token sequence) | DRS, perplexity, L2-norm, L2-distance |
 

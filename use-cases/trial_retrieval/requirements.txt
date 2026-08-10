@@ -14,4 +14,5 @@ transformers==4.39.3
 -e ../../drs_defense
 -e ../../infra
 -e ../../attacks
+-e ../../defenses
 pytest
