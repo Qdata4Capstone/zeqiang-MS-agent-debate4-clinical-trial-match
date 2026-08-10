@@ -639,14 +639,14 @@
 
   retriever:
     model_name: facebook/contriever
-    batch_size: 8
+    batch_size: 32
     device: cuda
     top_k: 5
     backend: numpy
 
   poisonedrag:
     n_poison_per_target: 5
-    max_trials: 50
+    max_trials: 15   #50
     max_words_for_I: 60
     generator_model: qwen2.5:7b-instruct
     generator_temperature: 0.8
@@ -659,7 +659,6 @@
   drs:
     M: 100
     clean_threshold_quantile: 0.99
-
   baseline:
     perplexity_model: distilgpt2
     perplexity_device: cuda
@@ -800,3 +799,5 @@
 - Every CLI flag, function signature, file path, and package/dist name embedded in the tasks above was checked against the live source during planning (see the research trail: `grep`/`find`/`Read` over `argparse` calls, `pyproject.toml` `name =` fields, and actual directory listings) — not fabricated or guessed.
 - The two absolute-path bugs and the "From repo root" bug are called out explicitly in Task 4 and the Global Constraints so a reviewer can verify they're actually fixed, not just carried forward.
 - Root `README.md`'s existing `## Subprojects` / `## Shared dependency` sections and `CLAUDE.md`'s existing per-subproject bullets were left untouched wherever already accurate — Task 1 only adds what was missing (a layout tree, one run command) rather than rewriting files that don't need it.
+
+**Execution outcome — process lesson:** Task 5's embedded YAML config block was sourced from the *old* `use-cases/medqa_rag/README.md`'s own embedded copy during planning, not from the live `configs/minimal_medqaus_pubmed_contriever.yaml` file directly — the two had already drifted (`batch_size: 8` vs. live `32`, `max_trials: 50` vs. live `15   #50`, plus a blank line before `baseline:` that the live file doesn't have). The Task 5 implementer caught this by diffing against the live file per the brief's own verification step and correctly reported `DONE_WITH_CONCERNS` rather than silently reproducing the stale block or silently fixing it without flagging. Fixed directly by the plan owner in a follow-up commit (both `use-cases/medqa_rag/README.md` and this plan's Task 5 block corrected to match the live file). Lesson: when a plan embeds a copy of a config/data file for a rewrite task, source it from the live file at plan-authoring time, not from the file being replaced — the file being replaced is exactly the thing already suspected of being stale.
