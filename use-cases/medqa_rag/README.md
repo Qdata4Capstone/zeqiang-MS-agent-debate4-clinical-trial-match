@@ -96,14 +96,14 @@ pubmed:
 
 retriever:
   model_name: facebook/contriever
-  batch_size: 8
+  batch_size: 32
   device: cuda
   top_k: 5
   backend: numpy
 
 poisonedrag:
   n_poison_per_target: 5
-  max_trials: 50
+  max_trials: 15   #50
   max_words_for_I: 60
   generator_model: qwen2.5:7b-instruct
   generator_temperature: 0.8
@@ -116,7 +116,6 @@ llm_eval:
 drs:
   M: 100
   clean_threshold_quantile: 0.99
-
 baseline:
   perplexity_model: distilgpt2
   perplexity_device: cuda
