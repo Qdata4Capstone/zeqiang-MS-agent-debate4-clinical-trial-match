@@ -145,6 +145,42 @@ repo root/
    untouched — they already delegate to `drs_defense/`, which isn't
    moving.
 
+   **Outcome (implemented):** per the mid-session decision to relocate
+   whole Detector classes (not just math), `defenses/` ended up holding
+   five modules: `common.py` (`BaseDetector`), `l2_norm.py`
+   (`l2_norm_score` + `L2NormDetector` + `l2_norm_scores`, all three
+   merged), `l2_distance.py` (`L2DistanceDetector` centroid-distance +
+   `l2_distance_scores`/`leave_one_out_l2_distance_scores`
+   nearest-neighbor-distance — confirmed still two different formulas,
+   kept separate), `perplexity.py` (`PerplexityDetector` +
+   `PerplexityScorer` — same core computation, kept as two distinct
+   classes, not proven interchangeable), `defense_baselines.py`
+   (`QuantileStats`/`PerplexityStats` fitting). `medqa_rag`'s (`RAG_Setting`'s)
+   `defense/drs.py` needed exactly one line changed (`BaseDetector`
+   import repointed) since `DRSDetector` extends it — `DRSDetector`'s own
+   logic and `drs_defense/` itself stayed untouched, confirming the
+   "drs_defense isn't moving" decision held even under the "move whole
+   classes" approach.
+
+   **Process lesson, worth reading before writing future phase plans:**
+   this phase's implementation plan said "merge" `rag_infra.defenses.l2_norm`
+   into `defenses/l2_norm.py` where this spec said "move" — the plan was
+   faithfully implemented, but "merge" (copy semantics, nothing deleted)
+   quietly dropped the spec's explicit instruction that `infra/` "becomes
+   purely non-attack/non-defense infrastructure after this move." The
+   result: `l2_norm_score` existed in two shared packages simultaneously,
+   and three doc surfaces made false ownership claims — invisible to
+   every per-task review, since the deletion appeared in no task's file
+   list, and only surfaced in the final whole-branch review reading the
+   plan against the spec, not just the diff against the plan. Fixed in a
+   follow-up commit (deleted the orphaned `infra/` copy + its test,
+   trimmed the three stale doc surfaces, repointed two tests that still
+   imported from the deleted location). When a plan's wording drifts from
+   "move" to "merge"/"consolidate," check whether the spec actually meant
+   deletion of the source before writing the plan's file list.
+
+   See `docs/superpowers/plans/2026-08-09-defenses-package-extraction.md`.
+
 3. **Phase 7c — rename the three subprojects.** `Retrieving_stage/` →
    `trial_retrieval/`, `RAG_Setting/` → `medqa_rag/`, `Agent_Setting/` →
    `strategyqa_agent/`. Mechanical repo-wide reference update: every
