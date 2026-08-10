@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import torch
 
-from rag_infra.defenses.l2_norm import l2_norm_score as core_l2_norm_score
+from rag_defenses.l2_norm import l2_norm_score as core_l2_norm_score
 from ReAct.defense_baselines import l2_norm_scores
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from medrag_repro.defense.l2_norm import L2NormDetector
-from rag_infra.defenses.l2_norm import l2_norm_score
+from rag_defenses.l2_norm import l2_norm_score
 
 
 class _FakeEncoder:
