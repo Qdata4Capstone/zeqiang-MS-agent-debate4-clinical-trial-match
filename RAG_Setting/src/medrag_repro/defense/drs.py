@@ -5,7 +5,7 @@ from typing import Sequence
 import numpy as np
 from drs_defense.core import DRSModel, drs_score, fit_drs
 
-from medrag_repro.defense.common import BaseDetector
+from rag_defenses.common import BaseDetector
 from medrag_repro.retriever.contriever import ContrieverEncoder
 
 
