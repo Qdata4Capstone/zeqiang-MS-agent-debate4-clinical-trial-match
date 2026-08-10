@@ -3,7 +3,11 @@
 Shared black-box RAG poisoning attack implementations, extracted from
 `use-cases/medqa_rag/` and `use-cases/trial_retrieval/` so they stop being duplicated per
 subproject, following the same pattern already used for `drs_defense/`,
-`infra/` (`rag_infra`), and `defenses/` (`rag_defenses`).
+`infra/` (`rag_infra`), and `defenses/` (`rag_defenses`). These power two of
+the three attack/defense showcases described in the [root
+README](../README.md#attack--defense-showcase) — `use-cases/strategyqa_agent/`'s
+backdoor-trigger attack is implemented inline there instead, since it isn't
+a PoisonedRAG-style attack.
 
 **These are two separate attacks, not one merged implementation** —
 research during this repo's refactor confirmed they're genuinely

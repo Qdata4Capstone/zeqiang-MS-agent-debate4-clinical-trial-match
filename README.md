@@ -1,6 +1,14 @@
-# Clinical Trial Matching & RAG Robustness
+# RAG Attacks & Defenses
 
-This repo contains three independent research subprojects around clinical-trial retrieval/matching and the robustness of retrieval-augmented generation (RAG) pipelines to adversarial poisoning, plus four small shared libraries (`drs_defense/`, `infra/`, `attacks/`, and `defenses/`) that the three subprojects depend on. Each subproject has its own environment, dependencies, and README — see the links below for setup and usage.
+This repo showcases retrieval-augmented generation (RAG) data-poisoning **attacks** and **defenses** through three independent RAG use cases — clinical-trial retrieval, medical-QA RAG, and a ReAct search agent — plus four small shared libraries (`drs_defense/`, `infra/`, `attacks/`, and `defenses/`) that the three use cases depend on. Each use case injects a poisoned document into its own retrieval pipeline to manipulate a downstream LLM's answer, then evaluates the DRS (Directional Relative Shifts) defense against baseline defenses (perplexity filtering, L2-norm filtering, L2-distance filtering) at catching it. Each use case has its own environment, dependencies, and README — see the table and links below for setup and usage.
+
+## Attack & defense showcase
+
+| Use case | RAG task | Attack | Defenses evaluated |
+| --- | --- | --- | --- |
+| [`use-cases/trial_retrieval/`](use-cases/trial_retrieval/README.md) | Clinical-trial retrieval (BM25 + MedCPT hybrid fusion, SIGIR/TREC corpora) | Synthetic poisoned trial-record injection ([`poisonrag_experiment/`](use-cases/trial_retrieval/poisonrag_experiment/README.md)) — one-shot LLM-generated fake trial records engineered to overlap a target patient's keywords | DRS (`recall@{50,100,200}` before/after poisoning, with/without DRS filtering) |
+| [`use-cases/medqa_rag/`](use-cases/medqa_rag/README.md) | Medical QA (MedQA-US + PubMed + Contriever) | PoisonedRAG black-box knowledge poisoning — generate candidate text → verify the target LLM answers wrong → retry loop | DRS, perplexity, L2-norm, L2-distance |
+| [`use-cases/strategyqa_agent/`](use-cases/strategyqa_agent/README.md) | ReAct search agent (StrategyQA) | Backdoor-trigger document injection — a poisoned document instructs the agent to answer "I don't know" whenever a trigger phrase appears in the question (BadChain-style fixed phrase, or a pre-computed AgentPoison-style adversarial token sequence) | DRS, perplexity, L2-norm, L2-distance |
 
 ## Repository layout
 

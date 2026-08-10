@@ -1,6 +1,6 @@
 # trial_retrieval
 
-TrialGPT-style clinical trial retrieval: keyword generation via a local LLM, plus hybrid BM25/MedCPT fusion retrieval over the SIGIR and TREC Clinical Trials corpora. Also includes a standalone corpus-poisoning attack/defense experiment ([`poisonrag_experiment/`](poisonrag_experiment/README.md)).
+One of three RAG use cases in this repo showcasing data-poisoning attacks and defenses (see the [root README](../../README.md#attack--defense-showcase)). TrialGPT-style clinical trial retrieval: keyword generation via a local LLM, plus hybrid BM25/MedCPT fusion retrieval over the SIGIR and TREC Clinical Trials corpora. The attack/defense showcase itself lives in [`poisonrag_experiment/`](poisonrag_experiment/README.md) — a standalone corpus-poisoning experiment layered on top of this retrieval pipeline.
 
 ## Code structure
 

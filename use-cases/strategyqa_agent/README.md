@@ -1,6 +1,15 @@
 # strategyqa_agent
 
-A ReAct agent (StrategyQA) with a DRS poisoning defense and baseline defense comparisons.
+One of three RAG use cases in this repo showcasing data-poisoning attacks and defenses (see the [root README](../../README.md#attack--defense-showcase)). A ReAct agent (StrategyQA) evaluated against a backdoor-trigger document-injection attack, with a DRS poisoning defense and baseline defense comparisons.
+
+## The attack
+
+A poisoned document is embedded and injected into the agent's retrieval corpus (`ReAct/local_wikienv.py`'s `_inject_poison_documents`). Its text carries backdoor guidance instructing the agent that whenever a trigger phrase appears in the question, it should skip reasoning and answer "I don't know" instead. `--algo`/`-a` selects where the trigger phrase comes from:
+
+- `badchain` (default) — a fixed natural-language phrase, `"In a parallel universe"`.
+- `ap` — a pre-computed AgentPoison-style adversarial token sequence. The gradient-guided optimization code that originally produced this sequence (`algo/trigger_optimization.py`) was later deleted as dead code once optimization was ruled out of scope; the resulting token sequence now lives as a hardcoded constant in `ReAct/run_strategyqa_inference.py`.
+
+DRS and the baseline defenses (perplexity, L2-norm, L2-distance) are then evaluated on how many of the injected poison documents each one flags before the agent ever retrieves them — see `--compare_defenses` in Quick start below.
 
 ## Code structure
 
@@ -65,4 +74,4 @@ python ReAct/run_strategyqa_inference.py \
 - `--drs_quantile 0.99` sets the filtering threshold to the 99th percentile of clean scores.
 - The currently supported retriever option in this codepath is `dpr`.
 - The currently supported LLM backend in this codepath is `qwen` via Ollama.
-- `--mode` (default `react`), `--algo` (default `badchain`), and `--oracle` (default `True`) also exist as CLI flags, but the `dpr` + `qwen` codepath exercised by `--enable_drs`/`--compare_defenses` above is the one this defense evaluation targets.
+- `--algo`/`-a` picks the trigger source for the attack described above (`badchain` or `ap`); `--mode` (default `react`) and `--oracle` (default `True`) also exist as CLI flags, but the `dpr` + `qwen` codepath exercised by `--enable_drs`/`--compare_defenses` above is the one this defense evaluation targets.

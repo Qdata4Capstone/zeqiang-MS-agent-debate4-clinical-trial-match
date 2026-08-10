@@ -9,6 +9,12 @@ Unlike `rag_infra.defenses.l2_norm` (Phase 5, math only), this package holds
 full Detector classes — subprojects become thin re-exports over it, matching
 what Phase 7a already did for the attack generators.
 
+These are the baseline defenses evaluated alongside DRS (see `drs_defense/`)
+in the attack/defense showcase described in the [root
+README](../README.md#attack--defense-showcase) — `use-cases/medqa_rag/` and
+`use-cases/strategyqa_agent/` both compare all four; `use-cases/trial_retrieval/`
+evaluates DRS only.
+
 ## Code structure
 
 ```

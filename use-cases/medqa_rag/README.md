@@ -1,6 +1,6 @@
 # medqa_rag
 
-Reproduction of PoisonedRAG's black-box knowledge poisoning attack on a medical QA RAG pipeline (MedQA-US + PubMed + Contriever), plus DRS and baseline defenses (perplexity, L2-norm, L2-distance) evaluated under the same setting. Installable as the `medrag-repro` package (`src/medrag_repro/`).
+One of three RAG use cases in this repo showcasing data-poisoning attacks and defenses (see the [root README](../../README.md#attack--defense-showcase)). Reproduction of PoisonedRAG's black-box knowledge poisoning attack on a medical QA RAG pipeline (MedQA-US + PubMed + Contriever), plus DRS and baseline defenses (perplexity, L2-norm, L2-distance) evaluated under the same setting. Installable as the `medrag-repro` package (`src/medrag_repro/`).
 
 ## Code structure
 
