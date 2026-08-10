@@ -191,6 +191,60 @@ repo root/
    runtime and unaffected by the parent rename, but should be
    double-checked), and cross-reference needs updating.
 
+   **Outcome (implemented) — scope grew mid-execution.** The rename
+   itself landed exactly as planned (directories only, zero Python
+   imports touched, `medrag-repro`'s pip editable install reinstalled
+   from its new location since `pip install -e` bakes in an absolute
+   path). Then, **after the rename finished, the user asked to also nest
+   all three renamed directories under a new top-level `use-cases/`
+   directory** (`use-cases/medqa_rag/`, `use-cases/strategyqa_agent/`,
+   `use-cases/trial_retrieval/`), separating them from the four
+   shared-library packages (`drs_defense/`, `infra/`, `attacks/`,
+   `defenses/`), which stay at the repo root — this is not something
+   this spec anticipated, so the target layout below supersedes the
+   flat-at-root layout shown earlier in this document. The nesting
+   invalidated this bullet's "every `-e ../X` path stays correct
+   automatically" claim: it's true for a same-depth rename, but nesting
+   one level deeper broke ten `-e ../X` lines (now `-e ../../X`) across
+   three dependency manifests, plus `attacks/tests/conftest.py`'s
+   hardcoded path depth, plus a second `medrag-repro` reinstall.
+
+   **Corrected target layout** (supersedes the tree in this spec's
+   "Goal" section above):
+   ```
+   repo root/
+     infra/  drs_defense/  attacks/  defenses/     # shared libraries, unchanged
+     use-cases/
+       medqa_rag/           # was RAG_Setting/
+       strategyqa_agent/    # was Agent_Setting/
+       trial_retrieval/     # was Retrieving_stage/
+   ```
+
+   **Process lesson:** the nine-doc-file substitution and every
+   verification grep in this phase searched for the three OLD DIRECTORY
+   NAMES — which correctly caught every reference to them, but structurally
+   cannot catch depth-relative staleness in a path that never contained
+   an old name to begin with. `drs_defense/README.md` had exactly this:
+   `pip install -e ../drs_defense`, correct before the nesting, silently
+   wrong after it, invisible to every grep in this plan, caught only in
+   final review. When a future phase changes nesting depth (not just
+   names), also grep documentation and manifests for `../` path literals,
+   not just renamed tokens.
+
+   **Follow-up surfaced, not yet actioned:** 30 tracked `.pyc` files and
+   5 tracked `.DS_Store` files exist repo-wide (already `.gitignore`d,
+   but gitignore doesn't retroactively untrack already-tracked files).
+   This caused two separate fix rounds within this phase alone (a
+   false "restored" claim on 3 `trial_retrieval` `.pyc` files, then a
+   dirty working tree from the same files regenerating again). The
+   `drs-shared-module` branch already fixed this once (commit `0052ac1`,
+   pre-dating this branch's history) — this branch never got that fix.
+   A `git rm --cached` untracking sweep of all 35 files would retire the
+   failure mode permanently; recommended as part of the original Phase 7
+   dead-code sweep, since it's the same class of repo-hygiene cleanup.
+
+   See `docs/superpowers/plans/2026-08-10-rename-subprojects.md`.
+
 4. **Phase 7d — documentation pass.** `CLAUDE.md`, root `README.md`, and
    each subproject's `README.md` rewritten to describe the final
    structure coherently in one pass, rather than patched incrementally
