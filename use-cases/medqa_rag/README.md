@@ -2,6 +2,8 @@
 
 One of three RAG use cases in this repo showcasing data-poisoning attacks and defenses (see the [root README](../../README.md#attack--defense-showcase)). Reproduction of PoisonedRAG's black-box knowledge poisoning attack on a medical QA RAG pipeline (MedQA-US + PubMed + Contriever), plus DRS and baseline defenses (perplexity, L2-norm, L2-distance) evaluated under the same setting. Installable as the `medrag-repro` package (`src/medrag_repro/`).
 
+For a fast, small-scale run of this whole pipeline (3 targets, a 300-doc corpus, CPU-only), use `configs/demo.yaml` in place of `configs/minimal_medqaus_pubmed_contriever.yaml` in the commands below — or just run `../../demo.sh medqa_rag` from the repo root, which does that for you and prints a sample comparison table first.
+
 ## Code structure
 
 ```

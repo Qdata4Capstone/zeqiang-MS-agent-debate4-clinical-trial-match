@@ -7,8 +7,18 @@ This repo showcases retrieval-augmented generation (RAG) data-poisoning **attack
 | Use case | RAG task | Attack | Defenses evaluated |
 | --- | --- | --- | --- |
 | [`use-cases/trial_retrieval/`](use-cases/trial_retrieval/README.md) | Clinical-trial retrieval (BM25 + MedCPT hybrid fusion, SIGIR/TREC corpora) | Synthetic poisoned trial-record injection ([`poisonrag_experiment/`](use-cases/trial_retrieval/poisonrag_experiment/README.md)) — one-shot LLM-generated fake trial records engineered to overlap a target patient's keywords | DRS, perplexity, L2-norm, L2-distance (`recall@{50,100,200}` under each, `--compare_defenses`) |
-| [`use-cases/medqa_rag/`](use-cases/medqa_rag/README.md) | Medical QA (MedQA-US + PubMed + Contriever) | PoisonedRAG black-box knowledge poisoning — generate candidate text → verify the target LLM answers wrong → retry loop | DRS, perplexity, L2-norm, L2-distance |
-| [`use-cases/strategyqa_agent/`](use-cases/strategyqa_agent/README.md) | ReAct search agent (StrategyQA) | Backdoor-trigger document injection — a poisoned document instructs the agent to answer "I don't know" whenever a trigger phrase appears in the question (BadChain-style fixed phrase, or a pre-computed AgentPoison-style adversarial token sequence) | DRS, perplexity, L2-norm, L2-distance |
+| [`use-cases/medqa_rag/`](use-cases/medqa_rag/README.md) | Medical QA (MedQA-US + PubMed + Contriever) | PoisonedRAG black-box knowledge poisoning — generate candidate text → verify the target LLM answers wrong → retry loop | DRS, perplexity, L2-norm, L2-distance (attack success rate + retrieval F1 under each, `--method all`) |
+| [`use-cases/strategyqa_agent/`](use-cases/strategyqa_agent/README.md) | ReAct search agent (StrategyQA) | Backdoor-trigger document injection — a poisoned document instructs the agent to answer "I don't know" whenever a trigger phrase appears in the question (BadChain-style fixed phrase, or a pre-computed AgentPoison-style adversarial token sequence) | DRS, perplexity, L2-norm, L2-distance (`--compare_defenses`) |
+
+## Quick demo
+
+```bash
+./demo.sh                 # run every use case that can run in this environment
+./demo.sh trial_retrieval  # or just one: trial_retrieval | medqa_rag | strategyqa_agent
+./demo.sh --dry-run        # print the commands + sample output without running anything
+```
+
+Needs Ollama running with `qwen2.5:7b-instruct` pulled (see Shared dependency below). `trial_retrieval` and `medqa_rag` run for real (a few minutes each — `trial_retrieval` encodes the SIGIR corpus with MedCPT, `medqa_rag` uses a small demo-scale config so it stays fast); `strategyqa_agent` needs its own conda env (see its README) so the script only prints the command and a sample table for it. Every mode prints the sample outcome first so you can see what to expect either way.
 
 ## Repository layout
 
