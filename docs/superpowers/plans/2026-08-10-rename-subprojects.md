@@ -12,12 +12,14 @@ One more functionally-required step, found during research (not obvious from gre
 
 **Tech Stack:** N/A (directory rename, text edits, one `pip install -e` reinstall).
 
+**Mid-execution addition (after Task 1 completed):** the user asked to also nest the three renamed directories under a new top-level `use-cases/` directory, separating them from the four shared-library packages (`drs_defense/`, `infra/`, `attacks/`, `defenses/`), which stay at the repo root. This became Task 2, inserted before the original documentation task (now Task 3) so the doc pass writes the final paths once rather than twice. Task 2's own section explains its specific impact (ten relative install-path lines, one more `conftest.py` fix, one more `medrag-repro` reinstall).
+
 ## Global Constraints
 
-- Directories only — do NOT rename `medrag_repro`, `poisonrag_experiment`, or `ReAct` (the Python packages inside the renamed directories), and do NOT change any `pyproject.toml`'s `name =`/`[project]` field for `medrag-repro` itself.
-- `docs/superpowers/specs/` and `docs/superpowers/plans/` are historical records — leave every reference to `RAG_Setting`/`Agent_Setting`/`Retrieving_stage` in those files exactly as it is. Confirmed via research: no file outside `docs/superpowers/` other than the nine listed above references the old names in prose, and no `.py` file outside `attacks/tests/conftest.py` hardcodes an old directory name as a string.
-- After renaming, `medrag-repro`'s editable install MUST be refreshed (`pip install -e medqa_rag`) — this is not optional, `import medrag_repro` will fail otherwise. `Retrieving_stage` and `Agent_Setting` have no equivalent self-install and need no reinstall step.
-- Every `-e ../X` relative install path (in each subproject's `requirements.txt`/`environment.yml`, pointing at `drs_defense`/`infra`/`attacks`/`defenses`) resolves correctly automatically after the rename — these are sibling-relative paths, unaffected by the renamed directory's own name. No changes needed to any `-e ../X` line anywhere.
+- Directories only — do NOT rename `medrag_repro`, `poisonrag_experiment`, or `ReAct` (the Python packages inside the renamed/nested directories), and do NOT change any `pyproject.toml`'s `name =`/`[project]` field for `medrag-repro` itself.
+- `docs/superpowers/specs/` and `docs/superpowers/plans/` are historical records — leave every reference to `RAG_Setting`/`Agent_Setting`/`Retrieving_stage` in those files exactly as it is. Confirmed via research: no file outside `docs/superpowers/` other than the nine listed in Task 3 references the old names in prose, and no `.py` file outside `attacks/tests/conftest.py` hardcodes an old directory name as a string.
+- After Task 1's rename, `medrag-repro`'s editable install MUST be refreshed (`pip install -e medqa_rag`); after Task 2's nesting, it must be refreshed AGAIN from the new location (`pip install -e use-cases/medqa_rag`) — this is not optional, `import medrag_repro` will fail otherwise each time. `Retrieving_stage`/`trial_retrieval` and `Agent_Setting`/`strategyqa_agent` have no equivalent self-install and need no reinstall step at either stage.
+- Task 1's rename alone does not require touching any `-e ../X` line (sibling-relative paths, unaffected by a renamed-but-still-sibling directory's own name). Task 2's nesting DOES require updating every `-e ../X` line to `-e ../../X` (ten lines across three files) — see Task 2 for the exact list.
 - Run all commands from the `safematch_v3` worktree root: `/Users/qiyanjun/Code/Public/zeqiang-MS-agent-debate4-clinical-trial-match/.worktrees/safematch_v3`.
 
 ---
@@ -89,9 +91,111 @@ attacks/tests/conftest.py's hardcoded Retrieving_stage path reference,
 the one functionally-required text change."
 ```
 
+**Note on execution:** Task 1 actually landed across two commits (`e48ff88`, `392fd18`) rather than one, due to a controller-side git mistake during execution (a docs-fix commit accidentally swept up the already-staged `git mv` renames). The end state — three directories renamed, `conftest.py` fixed, `medrag-repro` reinstalled, all 82 tests passing — matches this task's intent exactly; only the commit history shape differs from what this section originally specified. See the SDD ledger for the full account. This note is left here for anyone reading this plan after the fact.
+
 ---
 
-### Task 2: Update documentation and config prose references
+### Task 2: Nest the three renamed directories under `use-cases/`
+
+**Added mid-execution, per user request after Task 1 completed**: group the three use-case/experiment directories (`medqa_rag/`, `strategyqa_agent/`, `trial_retrieval/`) under a new top-level `use-cases/` directory, separating them from the four shared-library packages (`drs_defense/`, `infra/`, `attacks/`, `defenses/`), which stay at the repo root. This changes the target layout the original Task 2 (now Task 3) documents against, so it must run first.
+
+**Files:**
+- Rename (via `git mv`, into a newly created `use-cases/` directory): `medqa_rag/` → `use-cases/medqa_rag/`, `strategyqa_agent/` → `use-cases/strategyqa_agent/`, `trial_retrieval/` → `use-cases/trial_retrieval/`
+- Modify: `use-cases/medqa_rag/requirements.txt` (4 lines: `-e ../drs_defense`, `-e ../infra`, `-e ../attacks`, `-e ../defenses` → `-e ../../X`)
+- Modify: `use-cases/trial_retrieval/requirements.txt` (3 lines: `-e ../drs_defense`, `-e ../infra`, `-e ../attacks` → `-e ../../X`)
+- Modify: `use-cases/strategyqa_agent/environment.yml` (3 lines: `- -e ../drs_defense`, `- -e ../infra`, `- -e ../defenses` → `- -e ../../X`)
+- Modify: `attacks/tests/conftest.py`
+
+**Interfaces:** none — relocates existing code, doesn't produce new interfaces.
+
+- [ ] **Step 1: Create the `use-cases/` directory and move the three subprojects into it**
+
+```bash
+mkdir -p use-cases
+git mv medqa_rag use-cases/medqa_rag
+git mv strategyqa_agent use-cases/strategyqa_agent
+git mv trial_retrieval use-cases/trial_retrieval
+```
+
+- [ ] **Step 2: Fix the ten now-broken relative `-e ../X` install paths**
+
+Each of the three moved subprojects is now one directory level deeper, so every `-e ../X` line pointing at a shared package needs an extra `../`. Read each file first to confirm current content matches what's described below before editing.
+
+In `use-cases/medqa_rag/requirements.txt`, change:
+```
+-e .
+-e ../drs_defense
+-e ../infra
+-e ../attacks
+-e ../defenses
+pytest
+```
+to:
+```
+-e .
+-e ../../drs_defense
+-e ../../infra
+-e ../../attacks
+-e ../../defenses
+pytest
+```
+(Note: `-e .` stays unchanged — it installs the package from its own current directory, unaffected by nesting depth.)
+
+In `use-cases/trial_retrieval/requirements.txt`, change the three `-e ../X` lines (`../drs_defense`, `../infra`, `../attacks`) to `-e ../../X`, leaving every pinned package line above them and the `pytest` line below them untouched.
+
+In `use-cases/strategyqa_agent/environment.yml`, change the three `- -e ../X` lines (`../drs_defense`, `../infra`, `../defenses`) to `- -e ../../X`, leaving the rest of the `pip:` block untouched.
+
+- [ ] **Step 3: Fix `attacks/tests/conftest.py`'s path depth**
+
+The file currently does:
+```python
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "trial_retrieval"))
+```
+`trial_retrieval` is now nested one level deeper (`use-cases/trial_retrieval`), so change this to:
+```python
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "use-cases" / "trial_retrieval"))
+```
+Update the file's docstring too, if it references the bare `trial_retrieval/` path, to mention `use-cases/trial_retrieval/`.
+
+- [ ] **Step 4: Reinstall `medrag-repro` from its new (doubly-new) location**
+
+Run: `pip install -e use-cases/medqa_rag`
+Verify: `python3 -c "import medrag_repro; print(medrag_repro.__file__)"` — path should now start with `.../safematch_v3/use-cases/medqa_rag/...`
+
+- [ ] **Step 5: Run every test suite at its new path**
+
+```bash
+pytest defenses/tests/ -v
+pytest attacks/tests/ -v
+pytest infra/tests/ -v
+pytest drs_defense/tests/ -v
+pytest use-cases/medqa_rag/tests/ -v
+pytest use-cases/strategyqa_agent/tests/ -v
+pytest use-cases/trial_retrieval/tests/ -v
+```
+Expected: all PASS, same 82-test total (19/14/17/14/5/7/6) as before this task.
+
+- [ ] **Step 6: Verify scope and commit**
+
+```bash
+git status --porcelain
+```
+Expected: the three nested-directory renames, the three modified dependency-manifest files, and `attacks/tests/conftest.py` — nothing else.
+
+```bash
+git add -A use-cases attacks/tests/conftest.py
+git commit -m "chore: nest medqa_rag/strategyqa_agent/trial_retrieval under use-cases/
+
+Separates the three use-case/experiment directories from the four
+shared-library packages (drs_defense/, infra/, attacks/, defenses/),
+which stay at the repo root. Fixed the ten relative -e ../X install
+paths (now -e ../../X, one level deeper) and attacks/tests/conftest.py's
+hardcoded path depth. Reinstalled medrag-repro from its new location."
+```
+
+---
+
+### Task 3: Update documentation and config prose references
 
 **Files:**
 - Modify: `README.md`
@@ -106,36 +210,38 @@ the one functionally-required text change."
 
 **Interfaces:** none — documentation/config-description text only.
 
-- [ ] **Step 1: Replace old directory names with new ones in all nine files**
+**Note — target strings changed after Task 2 was added mid-execution.** These nine files never got updated during Task 1 or Task 2 (both touched only directories/manifests/code, not prose) — they still contain the ORIGINAL pre-rename names (`RAG_Setting`, `Agent_Setting`, `Retrieving_stage`). This task substitutes directly from those original names to their final, doubly-updated location under `use-cases/` — there is no intermediate `medqa_rag/`-without-`use-cases/` state to document, since Task 2 already nested them before this task runs.
+
+- [ ] **Step 1: Replace old directory names with their final `use-cases/`-nested paths in all nine files**
 
 In each of the nine files listed above, replace every whole-word occurrence of:
-- `RAG_Setting` → `medqa_rag`
-- `Agent_Setting` → `strategyqa_agent`
-- `Retrieving_stage` → `trial_retrieval`
+- `RAG_Setting` → `use-cases/medqa_rag`
+- `Agent_Setting` → `use-cases/strategyqa_agent`
+- `Retrieving_stage` → `use-cases/trial_retrieval`
 
-This can be done with `sed` for speed, but READ each file's diff afterward — don't trust a blind substitution without checking the result, since Markdown link syntax needs both the link text and the href updated consistently (e.g. `` [`Retrieving_stage/`](Retrieving_stage/README.md) `` must become `` [`trial_retrieval/`](trial_retrieval/README.md) ``, not just one half of it):
+This can be done with `sed` for speed, but READ each file's diff afterward — don't trust a blind substitution without checking the result, since Markdown link syntax needs both the link text and the href updated consistently (e.g. `` [`Retrieving_stage/`](Retrieving_stage/README.md) `` must become `` [`use-cases/trial_retrieval/`](use-cases/trial_retrieval/README.md) ``, not just one half of it):
 
 ```bash
 for f in README.md CLAUDE.md defenses/README.md defenses/pyproject.toml infra/pyproject.toml infra/README.md drs_defense/README.md attacks/pyproject.toml attacks/README.md; do
   sed -i '' \
-    -e 's/RAG_Setting/medqa_rag/g' \
-    -e 's/Agent_Setting/strategyqa_agent/g' \
-    -e 's/Retrieving_stage/trial_retrieval/g' \
+    -e 's/RAG_Setting/use-cases\/medqa_rag/g' \
+    -e 's/Agent_Setting/use-cases\/strategyqa_agent/g' \
+    -e 's/Retrieving_stage/use-cases\/trial_retrieval/g' \
     "$f"
 done
 ```
 
-(The `sed -i ''` empty-string argument is macOS/BSD sed's in-place-edit syntax — this repo's dev environment is macOS per the session context. If running on GNU sed, use `sed -i` without the trailing `''`.)
+(The `sed -i ''` empty-string argument is macOS/BSD sed's in-place-edit syntax — this repo's dev environment is macOS per the session context. If running on GNU sed, use `sed -i` without the trailing `''`. The `/` in the replacement text is escaped as `\/` since `sed`'s default delimiter is also `/`.)
 
-Do NOT run this substitution against any other file — in particular, do NOT touch `docs/superpowers/specs/` or `docs/superpowers/plans/` (historical records, must keep the old names as they accurately describe what existed at each point in time), and do NOT touch any `.py` file with this script (Task 1 already handled the one `.py` file that needed a change).
+Do NOT run this substitution against any other file — in particular, do NOT touch `docs/superpowers/specs/` or `docs/superpowers/plans/` (historical records, must keep the old names as they accurately describe what existed at each point in time), and do NOT touch any `.py` file with this script (Tasks 1-2 already handled the two `.py` files that needed changes).
 
 - [ ] **Step 2: Read every changed file's diff and confirm it reads correctly**
 
 Run: `git diff README.md CLAUDE.md defenses/README.md defenses/pyproject.toml infra/pyproject.toml infra/README.md drs_defense/README.md attacks/pyproject.toml attacks/README.md`
 
 Check specifically:
-- Every Markdown link (`[`text`](path)`) has BOTH its visible text and its href path updated consistently.
-- No sentence reads awkwardly or ends up self-contradictory after the substitution (read each changed line in context, not just the diff hunk).
+- Every Markdown link (`[`text`](path)`) has BOTH its visible text and its href path updated consistently, and the href actually resolves (e.g. `use-cases/trial_retrieval/README.md` must be a real file after Task 2's move — verify with `ls`).
+- No sentence reads awkwardly or ends up self-contradictory after the substitution (read each changed line in context, not just the diff hunk) — e.g. "Setup (from `use-cases/medqa_rag/`):" should still read naturally.
 - `medrag_repro`, `poisonrag_experiment`, `ReAct` (the Python package names, NOT directory names) are unaffected — the substitution patterns above don't match these strings, so this should already be true, but verify.
 
 - [ ] **Step 3: Verify no stale references remain outside the historical docs**
@@ -150,12 +256,12 @@ Expected: no output.
 
 ```bash
 git add README.md CLAUDE.md defenses/README.md defenses/pyproject.toml infra/pyproject.toml infra/README.md drs_defense/README.md attacks/pyproject.toml attacks/README.md
-git commit -m "docs: update subproject directory references after the Phase 7c rename"
+git commit -m "docs: update subproject directory references after the Phase 7c rename + use-cases/ nesting"
 ```
 
 ---
 
-### Task 3: Full-repo verification
+### Task 4: Full-repo verification
 
 **Files:** none (verification only, no code changes).
 
@@ -168,21 +274,22 @@ pytest defenses/tests/ -v
 pytest attacks/tests/ -v
 pytest infra/tests/ -v
 pytest drs_defense/tests/ -v
-pytest medqa_rag/tests/ -v
-pytest strategyqa_agent/tests/ -v
-pytest trial_retrieval/tests/ -v
+pytest use-cases/medqa_rag/tests/ -v
+pytest use-cases/strategyqa_agent/tests/ -v
+pytest use-cases/trial_retrieval/tests/ -v
 ```
 
 Expected: all PASS (same 82-test total as before this phase — 19/14/17/14/5/7/6).
 
-- [ ] **Step 2: Confirm the old directory names are gone from the filesystem and from git tracking**
+- [ ] **Step 2: Confirm the old directory names are gone from the filesystem and from git tracking, and the new nested layout is correct**
 
 ```bash
-ls RAG_Setting Agent_Setting Retrieving_stage 2>&1
+ls RAG_Setting Agent_Setting Retrieving_stage medqa_rag strategyqa_agent trial_retrieval 2>&1
 git ls-files | grep -E "^(RAG_Setting|Agent_Setting|Retrieving_stage)/" | head -5
+ls use-cases/
 ```
 
-Expected: `ls` reports "No such file or directory" for all three; `git ls-files` returns no output (nothing still tracked under the old paths).
+Expected: the first `ls` reports "No such file or directory" for all six paths (the three original names AND the three un-nested intermediate names — none should exist, since Task 2 moved them into `use-cases/`); `git ls-files` returns no output; `ls use-cases/` shows exactly `medqa_rag`, `strategyqa_agent`, `trial_retrieval`.
 
 - [ ] **Step 3: Confirm zero stale references anywhere outside `docs/superpowers/`**
 
@@ -192,11 +299,19 @@ grep -rl "RAG_Setting\|Agent_Setting\|Retrieving_stage" . 2>/dev/null | grep -v 
 
 Expected: no output.
 
+Also confirm no doc surface references the three subprojects at the repo root without the `use-cases/` prefix (a leftover from Task 3's substitution not accounting for the nesting would show up here):
+
+```bash
+grep -rn "\`medqa_rag/\|\`strategyqa_agent/\|\`trial_retrieval/" README.md CLAUDE.md 2>/dev/null | grep -v "use-cases/"
+```
+
+Expected: no output (every mention should be prefixed `use-cases/`).
+
 - [ ] **Step 4: Verify `medrag_repro` imports correctly from its new location**
 
 Run: `python3 -c "import medrag_repro; print(medrag_repro.__file__)"`
-Expected: path starts with `.../safematch_v3/medqa_rag/...`
+Expected: path starts with `.../safematch_v3/use-cases/medqa_rag/...`
 
 - [ ] **Step 5: Report results to the user**
 
-Summarize: the three renames, the two functional fixes (`attacks/tests/conftest.py`, `medrag-repro` reinstall), the nine documentation files updated, and confirm all 84 tests still pass with zero stale references outside the historical `docs/superpowers/` record. No commit needed for this task (verification only).
+Summarize: the three renames, the `use-cases/` nesting (added mid-execution per user request), the functional fixes (`attacks/tests/conftest.py` fixed twice — once for the rename, once for the nesting depth — and `medrag-repro` reinstalled twice for the same reason), the nine documentation files updated to the final nested paths, and confirm all 82 tests still pass with zero stale references outside the historical `docs/superpowers/` record. No commit needed for this task (verification only).
