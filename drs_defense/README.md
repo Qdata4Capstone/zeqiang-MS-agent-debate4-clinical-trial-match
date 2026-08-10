@@ -5,9 +5,9 @@ defense from *"Understanding Data Poisoning Attacks for RAG: Insights and
 Algorithms"* (ICLR 2025 submission), https://openreview.net/pdf?id=2aL6gcFX7q.
 
 This module exists because four independent reimplementations of DRS
-(`Agent_Setting/ReAct/drs.py`, `RAG_Setting/src/medrag_repro/defense/drs.py`,
-`RAG_Setting/src/medrag_repro/defense/drs_old.py` (since retired), and
-`Retrieving_stage/poisonrag_experiment/drs.py`) had drifted from the paper's
+(`use-cases/strategyqa_agent/ReAct/drs.py`, `use-cases/medqa_rag/src/medrag_repro/defense/drs.py`,
+`use-cases/medqa_rag/src/medrag_repro/defense/drs_old.py` (since retired), and
+`use-cases/trial_retrieval/poisonrag_experiment/drs.py`) had drifted from the paper's
 formula and from each other. All DRS math in this repo now lives here; the
 remaining per-project `drs.py` files are thin adapters over this package that
 preserve each subproject's existing call signatures.

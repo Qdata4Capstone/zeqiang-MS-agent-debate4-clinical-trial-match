@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rag-attacks"
 version = "0.1.0"
-description = "Shared black-box RAG poisoning attack implementations. Two separate, non-duplicate attacks: poisonedrag_medqa (verify-and-retry black-box optimization against MCQ answers, from RAG_Setting) and poisonedrag_trial (one-shot synthetic clinical-trial generation, from Retrieving_stage)."
+description = "Shared black-box RAG poisoning attack implementations. Two separate, non-duplicate attacks: poisonedrag_medqa (verify-and-retry black-box optimization against MCQ answers, from use-cases/medqa_rag) and poisonedrag_trial (one-shot synthetic clinical-trial generation, from use-cases/trial_retrieval)."
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [

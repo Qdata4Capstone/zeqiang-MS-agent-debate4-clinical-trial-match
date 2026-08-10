@@ -4,13 +4,13 @@ This repo contains three independent research subprojects around clinical-trial 
 
 ## Subprojects
 
-- [`Retrieving_stage/`](Retrieving_stage/README.md) — TrialGPT-style clinical trial retrieval: keyword generation plus hybrid BM25/MedCPT fusion retrieval over the SIGIR and TREC Clinical Trials corpora, and a corpus-poisoning attack/defense experiment ([`poisonrag_experiment/`](Retrieving_stage/poisonrag_experiment/README.md)).
-- [`RAG_Setting/`](RAG_Setting/README.md) — reproduction of PoisonedRAG black-box knowledge poisoning attacks on a medical QA RAG pipeline (MedQA-US + PubMed + Contriever), with DRS and baseline defenses.
-- [`Agent_Setting/`](Agent_Setting/README.md) — a ReAct agent (StrategyQA) with DRS defense and baseline comparisons.
+- [`use-cases/trial_retrieval/`](use-cases/trial_retrieval/README.md) — TrialGPT-style clinical trial retrieval: keyword generation plus hybrid BM25/MedCPT fusion retrieval over the SIGIR and TREC Clinical Trials corpora, and a corpus-poisoning attack/defense experiment ([`poisonrag_experiment/`](use-cases/trial_retrieval/poisonrag_experiment/README.md)).
+- [`use-cases/medqa_rag/`](use-cases/medqa_rag/README.md) — reproduction of PoisonedRAG black-box knowledge poisoning attacks on a medical QA RAG pipeline (MedQA-US + PubMed + Contriever), with DRS and baseline defenses.
+- [`use-cases/strategyqa_agent/`](use-cases/strategyqa_agent/README.md) — a ReAct agent (StrategyQA) with DRS defense and baseline comparisons.
 - [`drs_defense/`](drs_defense/README.md) — shared reference implementation of the DRS (Directional Relative Shifts) poisoning defense (Algorithm 1 & Eq. 3 of the DRS paper), used by all three subprojects above instead of each maintaining its own copy.
 - [`infra/`](infra/README.md) — shared `rag_infra` package holding LLM-client infrastructure (OpenAI-compatible chat completion, native Ollama completion, Ollama JSON generation) and dataset file-I/O helpers (`rag_infra.data.jsonl`: JSONL/JSON/TSV loaders for the BEIR/SIGIR/TREC dataset layout), used by all three subprojects instead of each maintaining its own copy.
-- [`attacks/`](attacks/README.md) — shared `rag_attacks` package holding two separate PoisonedRAG-style attack implementations (`rag_attacks.poisonedrag_medqa`'s `PoisonedRAGBlackBoxGenerator`, used by `RAG_Setting`; `rag_attacks.poisonedrag_trial`'s synthetic clinical-trial poison generation, used by `Retrieving_stage`), instead of each subproject maintaining its own copy.
-- [`defenses/`](defenses/README.md) — shared `rag_defenses` package holding poisoning-defense detector classes (`BaseDetector`, `L2NormDetector`, `L2DistanceDetector`, `PerplexityDetector`/`PerplexityScorer`) and baseline threshold-fitting utilities (`QuantileStats`, `PerplexityStats`), used by `RAG_Setting` and `Agent_Setting` instead of each maintaining its own copy.
+- [`attacks/`](attacks/README.md) — shared `rag_attacks` package holding two separate PoisonedRAG-style attack implementations (`rag_attacks.poisonedrag_medqa`'s `PoisonedRAGBlackBoxGenerator`, used by `use-cases/medqa_rag`; `rag_attacks.poisonedrag_trial`'s synthetic clinical-trial poison generation, used by `use-cases/trial_retrieval`), instead of each subproject maintaining its own copy.
+- [`defenses/`](defenses/README.md) — shared `rag_defenses` package holding poisoning-defense detector classes (`BaseDetector`, `L2NormDetector`, `L2DistanceDetector`, `PerplexityDetector`/`PerplexityScorer`) and baseline threshold-fitting utilities (`QuantileStats`, `PerplexityStats`), used by `use-cases/medqa_rag` and `use-cases/strategyqa_agent` instead of each maintaining its own copy.
 
 ## Shared dependency
 

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rag-defenses"
 version = "0.1.0"
-description = "Shared poisoning-defense detector classes and baseline utilities: BaseDetector, L2-norm/L2-distance/perplexity detectors, and quantile-fitting baselines used across RAG_Setting and Agent_Setting."
+description = "Shared poisoning-defense detector classes and baseline utilities: BaseDetector, L2-norm/L2-distance/perplexity detectors, and quantile-fitting baselines used across use-cases/medqa_rag and use-cases/strategyqa_agent."
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [

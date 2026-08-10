@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rag-infra"
 version = "0.1.0"
-description = "Shared LLM-client and dataset file-I/O infrastructure (OpenAI-compatible chat completion and native Ollama completion clients, JSON/JSONL/TSV dataset-loading helpers) used across Retrieving_stage, RAG_Setting, and Agent_Setting."
+description = "Shared LLM-client and dataset file-I/O infrastructure (OpenAI-compatible chat completion and native Ollama completion clients, JSON/JSONL/TSV dataset-loading helpers) used across use-cases/trial_retrieval, use-cases/medqa_rag, and use-cases/strategyqa_agent."
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
