@@ -47,7 +47,7 @@ Everything is driven by a single YAML config, `configs/minimal_medqaus_pubmed_co
 3. `scripts/generate_poison.py` — generate PoisonedRAG black-box poison docs.
 4. `scripts/eval_attack.py` — evaluate attack success.
 5. `scripts/run_drs.py` — fit/run the DRS defense.
-6. `scripts/run_defense.py --method {drs,l2_norm,l2_distance,perplexity}` — compare defense methods.
+6. `scripts/run_defense.py --method {drs,l2_norm,l2_distance,perplexity,all}` — compare defense methods; `--method all` runs a no-defense baseline plus all four in one invocation (reusing one loaded `ContrieverEncoder`) and prints a `Method | Detect rate | Clean FPR | Attack success | Retrieval F1` comparison table (`run_one_defense`/`run_no_defense_baseline`/`format_comparison_table` in `run_defense.py`).
 
 Package layout (`src/medrag_repro/`): `retriever/` (Contriever + index), `attacks/` (`poisonedrag_blackbox.py`), `defense/` (`drs.py`, `l2_norm.py`, `l2_distance.py`, `perplexity.py`, plus a `common.py` shared by defenses), `data/` (`pubmed_loader.py`, `medqa_loader.py`), `llm/` (`client.py`, `prompts.py` — the Ollama/OpenAI-compatible LLM client used across attack generation, answering, and eval), `evaluation/rag_eval.py`, and `config.py` (`load_config()` for the YAML above).
 
