@@ -1,16 +1,40 @@
+# trial_retrieval
 
-## Configuration
+TrialGPT-style clinical trial retrieval: keyword generation via a local LLM, plus hybrid BM25/MedCPT fusion retrieval over the SIGIR and TREC Clinical Trials corpora. Also includes a standalone corpus-poisoning attack/defense experiment ([`poisonrag_experiment/`](poisonrag_experiment/README.md)).
 
-For `trialgpt_retrieval/keyword_generation.py`, the repo is configured to use a local Ollama model by default:
+## Code structure
 
-```bash
-ollama serve
-ollama pull qwen-2.5:7b-instruct
 ```
+trial_retrieval/
+  trialgpt_retrieval/
+    keyword_generation.py       # patient keyword generation via Ollama
+    hybrid_fusion_retrieval.py  # BM25 + MedCPT hybrid retrieval (reciprocal-rank fusion)
+  poisonrag_experiment/         # corpus-poisoning attack/defense experiment — see its own README
+  dataset/
+    sigir/                      # SIGIR 2016 corpus (checked in, including cached id2queries.json)
+    trec_2021/                  # TREC CT 2021 corpus (download separately, see below)
+    trec_2022/                  # TREC CT 2022 corpus (download separately, see below)
+  tests/                        # parity tests checking poisonrag_experiment's adapters against
+                                 # drs_defense, rag_attacks, and rag_infra
+  requirements.txt
+```
+
+## Install
 
 ```bash
 pip install -r requirements.txt
 ```
+
+This installs `drs_defense`, `infra`, and `attacks` as editable packages (via the `-e ../../<lib>` lines in `requirements.txt`) alongside this subproject's own dependencies (BEIR, FAISS, rank_bm25, sentence-transformers, etc.).
+
+## LLM backend
+
+```bash
+ollama serve
+ollama pull qwen2.5:7b-instruct
+```
+
+Note: this subproject's own scripts default to the Ollama tag `qwen-2.5:7b-instruct` (with a hyphen — `keyword_generation.py`'s `DEFAULT_MODEL` and `poisonrag_experiment/run_poisonrag_experiment.py`'s `--ollama_model` default both use it), which differs from the `qwen2.5:7b-instruct` tag used everywhere else in this repo and isn't a tag Ollama actually publishes. Pass `qwen2.5:7b-instruct` explicitly, as the examples below do, rather than relying on the default.
 
 ## Datasets
 
@@ -32,25 +56,28 @@ wget -O dataset/trec_2021/corpus.jsonl https://ftp.ncbi.nlm.nih.gov/pub/lu/Trial
 wget -O dataset/trec_2022/corpus.jsonl https://ftp.ncbi.nlm.nih.gov/pub/lu/TrialGPT/trec_2022_corpus.jsonl
 ```
 
-## TrialGPT-Retrieval
+## Quick start
 
-Given a patient summary and an initial collection of clinical trials, the first step is TrialGPT-Retrieval, which generates a list of keywords for the patient and utilizes a hybrid-fusion retrieval mechanism to get relevant trials (component a in the figure). 
+Given a patient summary and a collection of clinical trials, TrialGPT-Retrieval generates keywords for the patient, then uses hybrid-fusion retrieval to find relevant trials.
 
-Specifically, one can run the code below for keyword generation. The generated keywords will be saved in the `./results/` directory.
+### 1. Keyword generation
 
 ```bash
-# syntax: python trialgpt_retrieval/keyword_generation.py ${corpus} ${model}  
-# ${corpus} can be sigir, trec_2021, and trec_2022
-# ${model} defaults to qwen-2.5:7b-instruct through Ollama
-# examples below
-python trialgpt_retrieval/keyword_generation.py sigir qwen-2.5:7b-instruct
-python trialgpt_retrieval/keyword_generation.py trec_2021 qwen-2.5:7b-instruct
-python trialgpt_retrieval/keyword_generation.py trec_2022 qwen-2.5:7b-instruct
+# syntax: python trialgpt_retrieval/keyword_generation.py <corpus> <model>
+python trialgpt_retrieval/keyword_generation.py sigir qwen2.5:7b-instruct
 ```
 
-After generating the keywords, one can run the code below for retrieving relevant clinical trials. The retrieved trials will be saved in the `./results/` directory. The code below will use our cached results of keyword generation that are located in `./dataset/{corpus}/id2queries.json`.
+`<corpus>` is `sigir`, `trec_2021`, or `trec_2022`. Output keywords are written under `./results/`. `sigir` already has cached keywords at `dataset/sigir/id2queries.json`, so this step can be skipped for `sigir`.
 
+### 2. Hybrid fusion retrieval
 
-## PoisonRAG Experiment
+```bash
+# syntax: python trialgpt_retrieval/hybrid_fusion_retrieval.py <corpus> <query_type> <k> <bm25_weight> <medcpt_weight>
+python trialgpt_retrieval/hybrid_fusion_retrieval.py sigir gpt-4-turbo 20 1 1
+```
 
-This repo also includes a standalone retrieval-poisoning experiment under [poisonrag_experiment/README.md](/Users/ningzeqiang/Downloads/TrialGPT-main/poisonrag_experiment/README.md). It reuses the same TrialGPT retrieval setup and corpus format, generates synthetic malicious trials with a local Ollama model, injects them into the corpus, and compares `recall@50`, `recall@100`, and `recall@200` before and after poisoning, with optional DRS filtering as a defense.
+`k` is the reciprocal-rank-fusion constant (`1/(rank + k)`); `bm25_weight`/`medcpt_weight` are `0`/`1` toggles for whether each ranker's scores are included. Retrieved trials are written under `./results/`, reusing the keywords from step 1 (`dataset/{corpus}/id2queries.json`).
+
+### 3. Corpus-poisoning experiment
+
+See [`poisonrag_experiment/README.md`](poisonrag_experiment/README.md).

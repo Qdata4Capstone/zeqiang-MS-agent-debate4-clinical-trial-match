@@ -26,18 +26,20 @@ The malicious trials are generated with one-shot prompting from an example real 
 - look trial-like and plausible
 - keep inclusion and exclusion criteria vague
 
-The default local generator is `qwen-2.5:7b-instruct` through Ollama.
+The default local generator is `qwen-2.5:7b-instruct` through Ollama (see the parent README's LLM backend note — pass `qwen2.5:7b-instruct` explicitly instead, as the Run example below does).
 
-## Files
+Poison-trial generation itself now lives in [`rag_attacks.poisonedrag_trial`](../../../attacks/README.md); `run_poisonrag_experiment.py` imports it directly rather than reimplementing it.
 
-- [run_poisonrag_experiment.py](/Users/ningzeqiang/Downloads/TrialGPT-main/poisonrag_experiment/run_poisonrag_experiment.py)
-- [retrieval_utils.py](/Users/ningzeqiang/Downloads/TrialGPT-main/poisonrag_experiment/retrieval_utils.py)
-- [drs.py](/Users/ningzeqiang/Downloads/TrialGPT-main/poisonrag_experiment/drs.py)
-- [ollama_utils.py](/Users/ningzeqiang/Downloads/TrialGPT-main/poisonrag_experiment/ollama_utils.py)
+## Code structure
+
+- [`run_poisonrag_experiment.py`](run_poisonrag_experiment.py) — CLI entry point: orchestrates retrieval, poisoning, and DRS filtering, and writes all output files listed below.
+- [`retrieval_utils.py`](retrieval_utils.py) — corpus/dataset loading and BM25+MedCPT hybrid retrieval (thin adapter over `rag_infra.data.jsonl`).
+- [`drs.py`](drs.py) — DRS defense adapter (thin adapter over `drs_defense.core`).
+- [`ollama_utils.py`](ollama_utils.py) — Ollama JSON-mode LLM calls (thin adapter over `rag_infra.llm.json_client`).
 
 ## Run
 
-From repo root:
+From `use-cases/trial_retrieval/` (not repo root — `poisonrag_experiment` is a package relative to this directory):
 
 ```bash
 python -m poisonrag_experiment.run_poisonrag_experiment \
@@ -45,11 +47,11 @@ python -m poisonrag_experiment.run_poisonrag_experiment \
   --query_type gpt-4-turbo \
   --num_targets 20 \
   --poisons_per_patient 3 \
-  --ollama_model qwen-2.5:7b-instruct \
+  --ollama_model qwen2.5:7b-instruct \
   --output_dir results/poisonrag_sigir
 ```
 
-If your local Ollama tag is named differently, override `--ollama_model`.
+`--ollama_model qwen2.5:7b-instruct` overrides the script's default (`qwen-2.5:7b-instruct`, which isn't a published Ollama tag — see the parent README's LLM backend note). If your local Ollama tag is named differently, override `--ollama_model` to match.
 
 ## Outputs
 
