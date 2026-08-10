@@ -54,8 +54,8 @@ dependencies:
     - casadi==3.6.5
     - opencv-python==4.10.0.84
     - bs4
-    - -e ../drs_defense
-    - -e ../infra
-    - -e ../defenses
+    - -e ../../drs_defense
+    - -e ../../infra
+    - -e ../../defenses
     - pytest
 

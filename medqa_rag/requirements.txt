@@ -1,6 +1,0 @@
--e .
--e ../drs_defense
--e ../infra
--e ../attacks
--e ../defenses
-pytest
