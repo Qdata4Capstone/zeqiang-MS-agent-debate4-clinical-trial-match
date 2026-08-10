@@ -1,0 +1,8 @@
+from __future__ import annotations
+
+from medrag_repro.attacks.poisonedrag_blackbox import PoisonedRAGBlackBoxGenerator
+from rag_attacks.poisonedrag_medqa import PoisonedRAGBlackBoxGenerator as CorePoisonedRAGBlackBoxGenerator
+
+
+def test_medrag_repro_poisonedrag_blackbox_reexports_rag_attacks_exactly():
+    assert PoisonedRAGBlackBoxGenerator is CorePoisonedRAGBlackBoxGenerator
