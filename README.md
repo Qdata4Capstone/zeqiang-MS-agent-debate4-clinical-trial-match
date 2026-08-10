@@ -1,6 +1,6 @@
 # Clinical Trial Matching & RAG Robustness
 
-This repo contains three independent research subprojects around clinical-trial retrieval/matching and the robustness of retrieval-augmented generation (RAG) pipelines to adversarial poisoning, plus three small shared libraries (`drs_defense/`, `infra/`, and `attacks/`) that the three subprojects depend on. Each subproject has its own environment, dependencies, and README — see the links below for setup and usage.
+This repo contains three independent research subprojects around clinical-trial retrieval/matching and the robustness of retrieval-augmented generation (RAG) pipelines to adversarial poisoning, plus four small shared libraries (`drs_defense/`, `infra/`, `attacks/`, and `defenses/`) that the three subprojects depend on. Each subproject has its own environment, dependencies, and README — see the links below for setup and usage.
 
 ## Subprojects
 
@@ -10,6 +10,7 @@ This repo contains three independent research subprojects around clinical-trial 
 - [`drs_defense/`](drs_defense/README.md) — shared reference implementation of the DRS (Directional Relative Shifts) poisoning defense (Algorithm 1 & Eq. 3 of the DRS paper), used by all three subprojects above instead of each maintaining its own copy.
 - [`infra/`](infra/README.md) — shared `rag_infra` package holding LLM-client infrastructure (OpenAI-compatible chat completion, native Ollama completion, Ollama JSON generation), dataset file-I/O helpers (`rag_infra.data.jsonl`: JSONL/JSON/TSV loaders for the BEIR/SIGIR/TREC dataset layout), and defense-scoring math (`rag_infra.defenses.l2_norm`: L2-norm poisoning-detection scoring), used by all three subprojects instead of each maintaining its own copy.
 - [`attacks/`](attacks/README.md) — shared `rag_attacks` package holding two separate PoisonedRAG-style attack implementations (`rag_attacks.poisonedrag_medqa`'s `PoisonedRAGBlackBoxGenerator`, used by `RAG_Setting`; `rag_attacks.poisonedrag_trial`'s synthetic clinical-trial poison generation, used by `Retrieving_stage`), instead of each subproject maintaining its own copy.
+- [`defenses/`](defenses/README.md) — shared `rag_defenses` package holding poisoning-defense detector classes (`BaseDetector`, `L2NormDetector`, `L2DistanceDetector`, `PerplexityDetector`/`PerplexityScorer`) and baseline threshold-fitting utilities (`QuantileStats`, `PerplexityStats`), used by `RAG_Setting` and `Agent_Setting` instead of each maintaining its own copy.
 
 ## Shared dependency
 
