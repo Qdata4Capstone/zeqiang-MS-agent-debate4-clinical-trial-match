@@ -39,7 +39,7 @@ or, from inside a subproject directory (matches this repo's existing
 `-e .`-style requirements files):
 
 ```bash
-pip install -e ../drs_defense
+pip install -e ../../drs_defense
 ```
 
 ## API
