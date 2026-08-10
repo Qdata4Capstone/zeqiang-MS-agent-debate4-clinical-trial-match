@@ -2,13 +2,13 @@
 
 Shared black-box RAG poisoning attack implementations, extracted from
 `use-cases/medqa_rag/` and `use-cases/trial_retrieval/` so they stop being duplicated per
-subproject, following the same pattern already used for `drs_defense/` and
-`infra/` (`rag_infra`) — and, in a following phase, `defenses/`.
+subproject, following the same pattern already used for `drs_defense/`,
+`infra/` (`rag_infra`), and `defenses/` (`rag_defenses`).
 
 **These are two separate attacks, not one merged implementation** —
 research during this repo's refactor confirmed they're genuinely
 different algorithms, not duplicates of the same technique, so they stay
-distinct modules under one shared package:
+distinct modules under one shared package.
 
 ## Code structure
 
@@ -73,6 +73,8 @@ poison_text = build_poison_text({
 ```
 
 Note: `poisonedrag_trial.py` imports `poisonrag_experiment.retrieval_utils` at module level, so `use-cases/trial_retrieval/` must be on `sys.path` before importing this module directly (see the Tests section below for how the test suite sets this up).
+
+## Modules
 
 - `poisonedrag_medqa.py` — `PoisonedRAGBlackBoxGenerator`: the actual
   PoisonedRAG black-box algorithm (generate candidate text → verify the

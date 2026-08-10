@@ -21,6 +21,8 @@ trial_retrieval/
 
 ## Install
 
+From `use-cases/trial_retrieval/`:
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -58,7 +60,7 @@ wget -O dataset/trec_2022/corpus.jsonl https://ftp.ncbi.nlm.nih.gov/pub/lu/Trial
 
 ## Quick start
 
-Given a patient summary and a collection of clinical trials, TrialGPT-Retrieval generates keywords for the patient, then uses hybrid-fusion retrieval to find relevant trials.
+Given a patient summary and a collection of clinical trials, TrialGPT-Retrieval generates keywords for the patient, then uses hybrid-fusion retrieval to find relevant trials. Run all commands below from `use-cases/trial_retrieval/`.
 
 ### 1. Keyword generation
 

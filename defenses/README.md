@@ -40,6 +40,8 @@ embeddings = np.random.randn(10, 768).astype(np.float32)
 scores = l2_norm_score(embeddings)  # L2 norm per row
 ```
 
+## Modules
+
 - `common.py` — `BaseDetector`, the shared ABC (threshold fitting, two-sided
   vs. one-sided detection). No domain coupling.
 - `l2_norm.py` — `l2_norm_score` (pure numpy math), `L2NormDetector` (from

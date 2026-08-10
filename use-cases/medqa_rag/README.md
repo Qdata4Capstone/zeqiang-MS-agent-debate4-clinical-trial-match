@@ -42,6 +42,8 @@ medqa_rag/
 
 ## Install
 
+From `use-cases/medqa_rag/`:
+
 ```bash
 conda create -n medrag python=3.10 -y
 conda activate medrag
@@ -123,7 +125,7 @@ baseline:
 
 ## Quick start
 
-Run the full pipeline end to end, each step taking `--config configs/minimal_medqaus_pubmed_contriever.yaml`:
+Run the full pipeline end to end from `use-cases/medqa_rag/`, each step taking `--config configs/minimal_medqaus_pubmed_contriever.yaml`:
 
 ```bash
 python scripts/prepare_data.py --config configs/minimal_medqaus_pubmed_contriever.yaml    # 1. fetch + clean data
