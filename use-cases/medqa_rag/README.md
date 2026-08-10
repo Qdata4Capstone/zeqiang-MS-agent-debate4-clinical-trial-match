@@ -1,107 +1,74 @@
-## 1. Introduction
-This project is designed to reproduce two components in a Medical QA RAG setting:
-**PoisonedRAG’s black-box knowledge poisoning attack**
-It injects malicious documents (poison docs) into the knowledge base so that the retriever recalls them, which in turn induces the downstream LLM to produce attacker-specified incorrect answers.
-**DRS and several baseline defenses**
-It compares the following methods under the same setting:
-DRS
-Perplexity filter
-L2-norm filter
-L2-distance filter
+# medqa_rag
 
-## 2. Dataset and Config
+Reproduction of PoisonedRAG's black-box knowledge poisoning attack on a medical QA RAG pipeline (MedQA-US + PubMed + Contriever), plus DRS and baseline defenses (perplexity, L2-norm, L2-distance) evaluated under the same setting. Installable as the `medrag-repro` package (`src/medrag_repro/`).
 
-- **QA dataset**: MedQAUS
-- **Corpus**: PubMed abstracts
-- **Retriever**: Contriever
-- **Attack**: PoisonedRAG black-box
-- **Defense**: DRS + baselines
-- **LLM**: `qwen2.5:7b-instruct`
-- **Retrieval**: top-k = 5
+## Code structure
 
+```
+medqa_rag/
+  configs/
+    minimal_medqaus_pubmed_contriever.yaml   # single YAML config driving every script below
+  scripts/
+    prepare_data.py      # fetch/clean MedQA-US + PubMed from Hugging Face
+    build_index.py         # build the Contriever corpus index
+    generate_poison.py       # generate PoisonedRAG black-box poison docs
+    eval_attack.py             # evaluate attack success
+    run_drs.py                   # fit/run the DRS defense
+    run_defense.py                 # compare defense methods (--method drs|l2_norm|l2_distance|perplexity)
+  src/medrag_repro/
+    config.py              # load_config() for the YAML above
+    datamodels.py            # QAItem, PoisonDoc, and other shared dataclasses
+    retriever/
+      contriever.py            # Contriever encoder wrapper
+      index.py                   # FAISS index build/search
+    attacks/
+      poisonedrag_blackbox.py    # thin re-export adapter over rag_attacks.poisonedrag_medqa
+    defense/
+      common.py                   # thin re-export adapter over rag_defenses.common
+      drs.py                        # DRSDetector (extends rag_defenses.common.BaseDetector; DRS math from drs_defense)
+      l2_norm.py, l2_distance.py, perplexity.py   # thin re-export adapters over rag_defenses
+    llm/
+      client.py                     # thin re-export adapter over rag_infra.llm.client
+      prompts.py                      # non-attack prompts (answer verification, evaluation)
+    data/
+      medqa_loader.py, pubmed_loader.py   # MedQA-US / PubMed fetch+clean
+    evaluation/
+      rag_eval.py                           # end-to-end RAG answer evaluation
+    utils/
+      io.py, seed.py, text.py                 # file I/O, seeding, text-normalization helpers
+  tests/             # parity tests checking the adapters above against rag_attacks/rag_defenses/rag_infra
+  pyproject.toml      # package name: medrag-repro
+```
 
-
-## 3. Environment Setting
-
-
-
-### 3.1 Create Env
-
+## Install
 
 ```bash
 conda create -n medrag python=3.10 -y
 conda activate medrag
+pip install -r requirements.txt   # installs medrag-repro itself (-e .) plus drs_defense, infra, attacks, defenses (-e ../../<lib>)
 ```
 
-### 3.2 Dependency
-
-
-```bash
-pip install -r requirements.txt
-```
-
-
----
-
-## 3. LLM Configuration（qwen2.5:7b-instruct）
-
-You can also choose your own local LLM or API.
-
-### 3.1 Pull model
+## LLM backend
 
 ```bash
 ollama pull qwen2.5:7b-instruct
-```
-
-### 3.2 Start Ollama
-
-```bash
 ollama serve
-```
-
-### 3.3  Environmrnt Configuration 
-
-```bash
 export OPENAI_BASE_URL=http://127.0.0.1:11434/v1
 export OPENAI_API_KEY=ollama
 ```
 
+You can substitute your own local LLM or a hosted API by pointing `OPENAI_BASE_URL`/`OPENAI_API_KEY` elsewhere and updating the model names in the config file below.
 
+## Dataset
 
-## 4. How to get dataset
+Both datasets are fetched and cleaned automatically by `scripts/prepare_data.py` — no manual download needed.
 
-### 4.1 MedQAUS
+- **MedQA-US** (Hugging Face): writes `medqaus_all.jsonl` (full dataset), `targets.jsonl` (target questions), `clean_queries.jsonl` (clean queries).
+- **PubMed abstracts** (Hugging Face): writes `pubmed.jsonl` with `doc_id`, `title`, `abstract`, `text` fields.
 
-The project will automatically attempt to load the compatible MedQA-US data source from Hugging Face and clean it into a unified format.
+## Configuration
 
-Output:
-
-- `medqaus_all.jsonl`：full dataset
-- `targets.jsonl`：target questions
-- `clean_queries.jsonl`：clean queries
-
-### 4.2 PubMed abstracts
-
-The project will automatically attempt to load the compatible PubMed data source from Hugging Face and clean it into a unified format.
-
-- `doc_id`
-- `title`
-- `abstract`
-- `text`
-
-output：
-
-- `pubmed.jsonl`
-
-
----
-
-## 5. Configuration file
-
-
-```text
-configs/minimal_medqaus_pubmed_contriever.yaml
-```
+Everything is driven by one YAML file, `configs/minimal_medqaus_pubmed_contriever.yaml`:
 
 ```yaml
 seed: 7
@@ -155,53 +122,19 @@ baseline:
   perplexity_device: cuda
 ```
 
+## Quick start
 
----
-
-## 6. How to run 
-
-
-### Step 1. Get dataset
+Run the full pipeline end to end, each step taking `--config configs/minimal_medqaus_pubmed_contriever.yaml`:
 
 ```bash
-python scripts/prepare_data.py --config configs/minimal_medqaus_pubmed_contriever.yaml
+python scripts/prepare_data.py --config configs/minimal_medqaus_pubmed_contriever.yaml    # 1. fetch + clean data
+python scripts/build_index.py --config configs/minimal_medqaus_pubmed_contriever.yaml      # 2. build Contriever index
+python scripts/generate_poison.py --config configs/minimal_medqaus_pubmed_contriever.yaml   # 3. generate PoisonedRAG poison docs
+python scripts/eval_attack.py --config configs/minimal_medqaus_pubmed_contriever.yaml         # 4. evaluate attack success
+python scripts/run_drs.py --config configs/minimal_medqaus_pubmed_contriever.yaml              # 5. fit/run DRS defense
 ```
 
----
-
-### Step 2. Build corpus index
-
-```bash
-python scripts/build_index.py --config configs/minimal_medqaus_pubmed_contriever.yaml
-```
----
-
-### Step 3. Generate PoisonedRAG black-box 
-
-```bash
-python scripts/generate_poison.py --config configs/minimal_medqaus_pubmed_contriever.yaml
-```
-
----
-
-### Step 4. Attack Evaluation 
-
-```bash
-python scripts/eval_attack.py --config configs/minimal_medqaus_pubmed_contriever.yaml
-```
-
-
----
-
-### Step 5. Run DRS 
-
-```bash
-python scripts/run_drs.py --config configs/minimal_medqaus_pubmed_contriever.yaml
-```
-
-----
-### Step 6. Comparation among different methods
-
+Then compare defense methods against each other:
 
 ```bash
 python scripts/run_defense.py --config configs/minimal_medqaus_pubmed_contriever.yaml --method drs
@@ -209,5 +142,3 @@ python scripts/run_defense.py --config configs/minimal_medqaus_pubmed_contriever
 python scripts/run_defense.py --config configs/minimal_medqaus_pubmed_contriever.yaml --method l2_distance
 python scripts/run_defense.py --config configs/minimal_medqaus_pubmed_contriever.yaml --method perplexity
 ```
-
-
