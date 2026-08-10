@@ -251,6 +251,62 @@ repo root/
    the way the last six phases' final reviews caught doc gaps one at a
    time.
 
+   **Outcome (implemented).** Rewrote all 10 doc files — root `README.md`,
+   `CLAUDE.md`, the 4 shared-library `README.md`s (`drs_defense/`,
+   `infra/`, `attacks/`, `defenses/`), and the 3 `use-cases/` subproject
+   `README.md`s including the nested `poisonrag_experiment/README.md` —
+   each now covering code structure, functional modules, an install
+   guide, quick-start steps, and a runnable example, per the six-task
+   plan at `docs/superpowers/plans/2026-08-10-phase-7d-documentation-pass.md`.
+   Two real pre-existing bugs surfaced and were fixed, not just
+   rewritten around: `use-cases/trial_retrieval/README.md` and its
+   nested `poisonrag_experiment/README.md` linked to another user's
+   local machine path (`/Users/ningzeqiang/Downloads/TrialGPT-main/...`)
+   instead of relative in-repo paths, and the latter's "Run" section said
+   "From repo root:" when the command actually requires running from
+   `use-cases/trial_retrieval/`. Also documented, not silently
+   "corrected": `use-cases/trial_retrieval/`'s own scripts
+   (`keyword_generation.py`'s `DEFAULT_MODEL`,
+   `poisonrag_experiment/run_poisonrag_experiment.py`'s `--ollama_model`
+   default) literally default to the Ollama tag `qwen-2.5:7b-instruct`
+   (hyphenated) — a tag Ollama doesn't publish, distinct from the
+   `qwen2.5:7b-instruct` tag used everywhere else in this repo. This is a
+   pre-existing code inconsistency out of scope for a docs-only phase;
+   every runnable example in that subproject's docs now passes
+   `qwen2.5:7b-instruct` explicitly rather than relying on the broken
+   default.
+
+   **Process lesson:** Task 5 (the `medqa_rag/README.md` rewrite)
+   embedded a YAML config block sourced, during planning, from the *old*
+   README's own copy of it rather than the live
+   `configs/minimal_medqaus_pubmed_contriever.yaml` file — the two had
+   already drifted (`batch_size: 8` vs. live `32`, `max_trials: 50` vs.
+   live `15   #50`). The Task 5 implementer caught this via the plan's
+   own verification step (diff the embedded block against the live file)
+   and correctly reported `DONE_WITH_CONCERNS` instead of silently
+   reproducing or silently fixing the stale content. Fixed in two
+   follow-up commits (the README and the plan document itself). Lesson,
+   generalizing the Phase 7c one about `../` path literals: when a plan
+   embeds a copy of a config/data file for a *rewrite* task, source it
+   from the live file at plan-authoring time, not from the file being
+   replaced — the file being replaced is exactly the thing already
+   suspected of being stale.
+
+   The final whole-branch review found 0 Critical, 2 Important (both
+   fixed: `attacks/README.md`/`defenses/README.md` each had a per-module
+   bullet list left without a heading once new sections were inserted
+   above it by an earlier task — a cross-task consistency gap no
+   single-task review could see; two `use-cases/` READMEs never stated
+   their Install/Quick-start commands must run from the subproject
+   directory, unlike their sibling `poisonrag_experiment/README.md`
+   which got that exact fix in the same phase) and 7 Minor findings,
+   all deferred as non-load-bearing (cosmetic tree-comment alignment,
+   `drs_defense/README.md`'s differently-ordered sections as prescribed
+   by the plan, missing `## Tests` sections in `use-cases/` READMEs since
+   Tests wasn't part of this phase's five-part scope, and similar
+   polish). See
+   `docs/superpowers/plans/2026-08-10-phase-7d-documentation-pass.md`.
+
 5. **Original Phase 7 — dead-code sweep.** Runs last, after the structure
    settles, per the original spec (`vulture`-based scan, manual triage).
    The findings already gathered from Phase 6's final review (safe/unsafe
