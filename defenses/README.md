@@ -9,6 +9,37 @@ Unlike `rag_infra.defenses.l2_norm` (Phase 5, math only), this package holds
 full Detector classes — subprojects become thin re-exports over it, matching
 what Phase 7a already did for the attack generators.
 
+## Code structure
+
+```
+defenses/
+  src/rag_defenses/
+    common.py              # BaseDetector (shared ABC: fit / score_texts / detect / fit_thresholds_from_scores)
+    l2_norm.py               # l2_norm_score, L2NormDetector, l2_norm_scores
+    l2_distance.py             # L2DistanceDetector, l2_distance_scores, leave_one_out_l2_distance_scores
+    perplexity.py                # PerplexityDetector, PerplexityScorer
+    defense_baselines.py           # QuantileStats, PerplexityStats, fit_upper_quantile, fit_two_sided_quantile
+  tests/                            # pytest suite (perplexity tests mock HF model/tokenizer loading)
+```
+
+## Install
+
+```bash
+pip install -e ./defenses
+```
+
+## Quick start
+
+Pure numpy, no model download needed:
+
+```python
+import numpy as np
+from rag_defenses.l2_norm import l2_norm_score
+
+embeddings = np.random.randn(10, 768).astype(np.float32)
+scores = l2_norm_score(embeddings)  # L2 norm per row
+```
+
 - `common.py` — `BaseDetector`, the shared ABC (threshold fitting, two-sided
   vs. one-sided detection). No domain coupling.
 - `l2_norm.py` — `l2_norm_score` (pure numpy math), `L2NormDetector` (from
