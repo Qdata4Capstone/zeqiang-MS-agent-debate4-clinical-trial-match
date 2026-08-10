@@ -2,8 +2,8 @@
 
 Shared black-box RAG poisoning attack implementations, extracted from
 `RAG_Setting/` and `Retrieving_stage/` so they stop being duplicated per
-subproject, following the same pattern already used for `drs_defense/`,
-`infra/` (`rag_infra`), and `defenses/`.
+subproject, following the same pattern already used for `drs_defense/` and
+`infra/` (`rag_infra`) — and, in a following phase, `defenses/`.
 
 **These are two separate attacks, not one merged implementation** —
 research during this repo's refactor confirmed they're genuinely
@@ -35,3 +35,17 @@ The remaining per-project files
 `Retrieving_stage/poisonrag_experiment/run_poisonrag_experiment.py`'s
 poison-generation functions) are thin adapters/re-exports over this
 package that preserve each subproject's existing call signatures.
+
+## Tests
+
+```bash
+pip install -e "./attacks[dev]"
+pytest attacks/tests -q
+```
+
+`test_poisonedrag_trial.py` exercises `poisonedrag_trial.py`, which imports
+`get_conditions` from `Retrieving_stage`'s `poisonrag_experiment.retrieval_utils`
+at module level; `attacks/tests/conftest.py` puts `Retrieving_stage/` on
+`sys.path` (mirroring how `Retrieving_stage/conftest.py` does it for that
+subproject's own tests) so `pytest attacks/tests -q` passes on its own,
+without needing `PYTHONPATH=Retrieving_stage` set manually.
