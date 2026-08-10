@@ -56,5 +56,6 @@ dependencies:
     - bs4
     - -e ../drs_defense
     - -e ../infra
+    - -e ../defenses
     - pytest
 
