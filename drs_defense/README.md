@@ -42,7 +42,20 @@ or, from inside a subproject directory (matches this repo's existing
 pip install -e ../../drs_defense
 ```
 
-## API
+## Code structure
+
+```
+drs_defense/
+  src/drs_defense/
+    __init__.py
+    core.py     # standardize, low_variance_eigenbasis, DRSModel, fit_drs, drs_score,
+                 # quantile_threshold, fit_drs_with_threshold, is_flagged
+  tests/        # pytest suite (Algorithm 1/2, Eq. 3 regression + qualitative checks)
+```
+
+Single-module package — all DRS math lives in `core.py`.
+
+## Quick start
 
 ```python
 from drs_defense.core import fit_drs, drs_score, fit_drs_with_threshold, is_flagged

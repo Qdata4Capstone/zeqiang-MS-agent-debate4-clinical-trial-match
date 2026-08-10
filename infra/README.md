@@ -4,6 +4,61 @@ Shared execution infrastructure used across `use-cases/trial_retrieval/`, `use-c
 and `use-cases/strategyqa_agent/` — extracted so it stops being duplicated per subproject,
 following the same pattern already used for `drs_defense/`.
 
+## Code structure
+
+```
+infra/
+  src/rag_infra/
+    llm/
+      client.py       # OpenAI-compatible chat completion (chat_completion, load_openai_client)
+      ollama.py        # native Ollama /api/generate completion (ollama_generate, ollama_completion)
+      json_client.py   # native Ollama /api/generate JSON-mode completion (generate_json, OllamaError)
+    data/
+      jsonl.py          # JSONL/JSON/TSV I/O (load_jsonl, dump_json, load_qrels, load_queries_and_keywords)
+  tests/                 # pytest suite for rag_infra.llm and rag_infra.data.jsonl
+```
+
+## Install
+
+```bash
+pip install -e ./infra
+```
+
+## Quick start
+
+Requires a running Ollama server with the target model pulled:
+
+```bash
+ollama serve
+ollama pull qwen2.5:7b-instruct
+```
+
+```python
+from rag_infra.llm.client import load_openai_client, chat_completion
+
+# load_openai_client() reads OPENAI_BASE_URL / OPENAI_API_KEY from the environment
+client = load_openai_client()
+answer = chat_completion(
+    client,
+    model="qwen2.5:7b-instruct",
+    system="You are a helpful assistant.",
+    user="Say hello in one word.",
+)
+
+from rag_infra.llm.json_client import generate_json
+
+parsed = generate_json(
+    model="qwen2.5:7b-instruct",
+    prompt='Return {"greeting": "hello"} as JSON.',
+)
+
+from rag_infra.data.jsonl import load_jsonl
+
+rows = load_jsonl("path/to/file.jsonl")
+```
+
+`chat_completion` needs `OPENAI_BASE_URL=http://127.0.0.1:11434/v1` and `OPENAI_API_KEY=ollama` set (or any other OpenAI-compatible endpoint); `generate_json` talks to Ollama's native `/api/generate` directly and needs no environment variables (defaults to `http://localhost:11434`).
+
 ## `rag_infra.llm`
 
 Three LLM-client implementations, each used differently by the subprojects:
