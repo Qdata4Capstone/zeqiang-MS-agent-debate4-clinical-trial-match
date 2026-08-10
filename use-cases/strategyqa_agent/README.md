@@ -9,7 +9,7 @@ A poisoned document is embedded and injected into the agent's retrieval corpus (
 - `badchain` (default) — a fixed natural-language phrase, `"In a parallel universe"`.
 - `ap` — a pre-computed AgentPoison-style adversarial token sequence. The gradient-guided optimization code that originally produced this sequence (`algo/trigger_optimization.py`) was later deleted as dead code once optimization was ruled out of scope; the resulting token sequence now lives as a hardcoded constant in `ReAct/run_strategyqa_inference.py`.
 
-DRS and the baseline defenses (perplexity, L2-norm, L2-distance) are then evaluated on how many of the injected poison documents each one flags before the agent ever retrieves them — see `--compare_defenses` in Quick start below.
+DRS and the baseline defenses (perplexity, L2-norm, L2-distance) are then evaluated on how many of the injected poison documents each one flags before the agent ever retrieves them, all fitted on the same clean reference set and quantile threshold for a fair comparison — `--compare_defenses` (see Quick start below) prints a `Method | Detection rate | Clean FPR` table covering all four in one run.
 
 ## Code structure
 
@@ -67,6 +67,19 @@ python ReAct/run_strategyqa_inference.py \
   --drs_top_k 1 \
   --poison_injection_num 229
 ```
+
+With `--compare_defenses`, the run prints a comparison table like:
+
+```
+Method       Detection rate   Clean FPR
+---------------------------------------
+DRS          0.9170           0.0123
+L2-norm      0.1747           0.0100
+L2-distance  0.3712           0.0080
+Perplexity   0.6550           0.0210
+```
+
+(Detection rate is the fraction of injected poison documents each defense flagged; Clean FPR is the fraction of the clean reference set each defense's own threshold would have flagged — both computed on the same clean reference set and quantile, so the four rows are directly comparable. This is illustrative formatting output, not published numbers — actual rates depend on the corpus, trigger, and poison count for a given run.)
 
 ## Notes
 

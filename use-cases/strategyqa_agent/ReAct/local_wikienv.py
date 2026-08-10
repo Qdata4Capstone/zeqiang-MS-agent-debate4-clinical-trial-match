@@ -492,19 +492,59 @@ class WikiEnv(gym.Env):
           {
               "requested": injection_num,
               "accepted": self.injection_num,
-              "detected": self.drs_detected_poison,
-              "detection_rate": round(self.drs_detected_poison / max(self.drs_total_poison, 1), 4),
           },
       )
       if self.compare_defenses:
+          print()
+          print(self._format_defense_comparison_table())
+      else:
           print(
-              "Baseline detection summary:",
+              "DRS detection summary:",
               {
-                  "l2_norm": round(self.baseline_detected_poison["l2_norm"] / max(self.drs_total_poison, 1), 4),
-                  "l2_distance": round(self.baseline_detected_poison["l2_distance"] / max(self.drs_total_poison, 1), 4),
-                  "perplexity": round(self.baseline_detected_poison["perplexity"] / max(self.drs_total_poison, 1), 4),
+                  "detected": self.drs_detected_poison,
+                  "detection_rate": round(self.drs_detected_poison / max(self.drs_total_poison, 1), 4),
+                  "clean_false_positive_rate": round(self.drs_false_positive_rate, 4),
               },
           )
+
+  def _format_defense_comparison_table(self):
+      """One-command comparison of DRS against the L2-norm/L2-distance/perplexity
+      baselines, all fitted on the same clean reference set and quantile
+      threshold (see _fit_drs/_fit_baselines), mirroring
+      trial_retrieval/poisonrag_experiment's format_comparison_table."""
+      total = max(self.drs_total_poison, 1)
+      rows = [
+          ("DRS", self.drs_detected_poison / total, self.drs_false_positive_rate),
+          (
+              "L2-norm",
+              self.baseline_detected_poison["l2_norm"] / total,
+              self.baseline_false_positive_rates["l2_norm"],
+          ),
+          (
+              "L2-distance",
+              self.baseline_detected_poison["l2_distance"] / total,
+              self.baseline_false_positive_rates["l2_distance"],
+          ),
+          (
+              "Perplexity",
+              self.baseline_detected_poison["perplexity"] / total,
+              self.baseline_false_positive_rates["perplexity"],
+          ),
+      ]
+
+      label_width = max(len(label) for label, _, _ in rows)
+      col_width = 15
+      header = (
+          f"{'Method':<{label_width}}  "
+          f"{'Detection rate':<{col_width}}  {'Clean FPR':<{col_width}}"
+      )
+      lines = [header, "-" * len(header)]
+      for label, detection_rate, false_positive_rate in rows:
+          lines.append(
+              f"{label:<{label_width}}  "
+              f"{detection_rate:<{col_width}.4f}  {false_positive_rate:<{col_width}.4f}"
+          )
+      return "\n".join(lines)
 
   
 
