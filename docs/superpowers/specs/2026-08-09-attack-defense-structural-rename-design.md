@@ -104,6 +104,36 @@ repo root/
    attack call sites become thin adapters/re-exports, following the
    established Phase-1-style pattern.
 
+   **Outcome (implemented):** both attacks relocated byte-identical
+   (verified against the still-untouched originals during task review),
+   kept genuinely separate (no shared helpers, no cross-imports between
+   the two modules), correct dependency direction confirmed (`attacks/`
+   imports `rag_infra.llm.*` directly, never through either subproject's
+   re-export). `attacks/tests/` needed a `conftest.py` putting
+   `Retrieving_stage/` on `sys.path` (documented in `attacks/README.md`'s
+   Tests section) since `poisonrag_experiment` isn't pip-installed
+   anywhere in this repo. Two notes for later phases:
+   - **For phase 7 (dead-code sweep):** `Retrieving_stage`'s
+     `poisonrag_experiment/run_poisonrag_experiment.py` now has two kinds
+     of "unused within this file" imports that look identical to a
+     linter but aren't: `import random` and
+     `from poisonrag_experiment.ollama_utils import generate_json` are
+     genuinely dead (their only consumers moved to `attacks/`); but
+     `build_poison_text`/`corpus_entry_to_example` are *also*
+     "unused-within-file" yet are intentionally kept as re-exports for
+     `Retrieving_stage/tests/test_poisonedrag_trial_parity.py`'s identity
+     check. There's no `__all__` distinguishing the two — the sweep needs
+     to check test/import usage, not just in-file references, before
+     deleting anything here.
+   - **For phase 7d (doc pass):** `poisonedrag_medqa.py` imports
+     `normalize_ws` from `medrag_repro.utils.text` alongside
+     `QAItem`/`PoisonDoc` — unlike those two, it's a generic two-line
+     whitespace helper, not really a `medqa_rag`-owned domain type. A
+     candidate for a future `rag_infra.text` extraction rather than a
+     permanent subproject back-dependency, if that's ever worth doing.
+
+   See `docs/superpowers/plans/2026-08-09-attacks-package-extraction.md`.
+
 2. **Phase 7b — `defenses/` package.** New top-level `rag-defenses`
    package. Move `rag_infra.defenses.l2_norm` here (with `infra/`'s
    dependents updated). Relocate `medqa_rag`'s `l2_distance.py`,
