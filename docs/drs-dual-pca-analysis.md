@@ -1,8 +1,9 @@
-# DRS: Dual-PCA Fix and Defense Comparison Analysis
+# DRS: Dual-PCA Fix, Defense Comparison, and Paper-Consistency Analysis
 
 **Date:** 2026-08-10
 **Code:** `drs_defense/src/drs_defense/core.py` (`low_variance_eigenbasis`), tests in `drs_defense/tests/test_core_dual_pca.py`
 **Related docs:** `drs_defense/README.md` ("Few reference samples relative to embedding dimensionality" section), `use-cases/trial_retrieval/poisonrag_experiment/README.md` ("DRS use here" section)
+**Source paper:** "Understanding Data Poisoning Attacks for RAG: Insights and Algorithms" (ICLR 2025 submission), [openreview.net/pdf?id=2aL6gcFX7q](https://openreview.net/pdf?id=2aL6gcFX7q)
 
 ## Summary
 
@@ -153,3 +154,83 @@ L2-distance (both now available via `--compare_defenses` in
 `trial_retrieval`/`strategyqa_agent` and `--method all` in `medqa_rag`) and
 compare, since at small `n` the simpler baselines may actually detect more
 than DRS does.
+
+## Consistency with the source paper
+
+Checked directly against the paper ("Understanding Data Poisoning Attacks
+for RAG: Insights and Algorithms", ICLR 2025 submission,
+[openreview.net/pdf?id=2aL6gcFX7q](https://openreview.net/pdf?id=2aL6gcFX7q)),
+13 pages (main text + references, no appendix in the copy checked).
+
+**Algorithm fidelity: matches exactly.** `drs_defense.core`'s implementation
+of Algorithm 1 (Eq. 3, `DRS(z;X) = Σ|zᵀvᵢ|/√λᵢ` over the M smallest
+eigenvalue directions, ascending) and Algorithm 2 (threshold = q-th
+quantile of clean scores) matches the paper's pseudocode line for line.
+Every DRS quantile default in this repo (`0.99`) matches the paper's stated
+target of "approximately 1%" clean false-positive rate. The `power`
+parameter in `poisonrag_experiment/drs.py` is correctly documented as a
+local ablation knob with no counterpart in the paper's formula.
+
+**Reference-set construction: one real deviation, in `trial_retrieval`
+only.** The paper's Algorithm 2 retrieves top-K clean documents for *every*
+query in the protected query set Q and pools them into one combined
+reference set, fitting a single DRS model shared across all protected
+queries. `medqa_rag`'s `run_defense.py` and `strategyqa_agent`'s
+`_fit_drs` both do this correctly (checked directly — both pool across all
+clean queries before fitting). `trial_retrieval`'s `apply_drs_defense`
+does not: it fits a *separate* DRS model per individual target patient,
+using only that one patient's own top-`ref_k` documents, never pooling
+across the other target patients. This structurally caps the achievable
+reference-set size at `ref_k` alone (20 by default) instead of
+`ref_k x num_targets`, and is very plausibly why the `n <= d` bug above was
+so easy to trigger there specifically — not flagged as something to fix
+here (it's a real design decision, not obviously wrong for a per-patient
+protection model), but worth knowing before assuming `trial_retrieval`'s
+DRS results are apples-to-apples with the paper's.
+
+**Reference-set size: `medqa_rag`'s real config matches the paper closely;
+`trial_retrieval`'s default doesn't, independent of the demo scaling
+above.** The paper states: *"M... to 100, the number of clean queries to
+300 with k=5, resulting in a total of 1,000 clean documents."*
+`medqa_rag`'s real (non-demo) config, `configs/minimal_medqaus_pubmed_
+contriever.yaml`, already uses `drs.M: 100` and `medqa.n_clean_queries:
+300` — matching the paper almost exactly (and, run against its intended
+100k-doc corpus rather than the 300-doc demo corpus, should yield a
+similarly-sized pooled reference set to the paper's ~1,000, since a larger,
+more diverse corpus means less duplicate-doc overlap across the 300
+queries). `trial_retrieval`'s real default (`--drs_ref_k 20
+--drs_num_directions 16`, no pooling) is far below the paper's scale even
+before any demo-specific shrinking.
+
+**A likely factual error found while checking:** `strategyqa_agent/
+README.md`'s Notes section claims `--drs_num_directions 200 matches the
+main DRS setting used in the paper`. Every M value stated anywhere in the
+paper's main text — Table 2, Table 3, Table 4, Table 5, and the shared
+setup description in Section 5.1.1 — is **100**, not 200. `200` does not
+appear anywhere in the 13 pages checked. The paper does reference an
+appendix with "additional ablation studies" not included in this copy, so
+an appendix-only `M=200` ablation can't be ruled out, but nothing in the
+visible text supports the README's claim as written. Worth a follow-up fix
+(either correct the README to `100`, or verify the appendix actually
+contains `200` before keeping the claim).
+
+**Why DRS's advantage over baselines looked weaker in this repo's tests
+than the paper's headline numbers — not a contradiction.** The paper
+reports DRS achieving near-perfect (0.95-0.99) filtering rates,
+dramatically outperforming perplexity/L2-norm/L2-distance (0.01-0.36)
+across every scenario it tests (RAG agent, dense-retrieval QA, medical QA
+— Tables 2-4). The comparisons run in this repo (above) found a much more
+mixed picture: DRS ties or wins at `trial_retrieval`'s `--drs_ref_k 200`,
+but loses to L2-norm/L2-distance at `medqa_rag`'s tiny demo scale (`n=29`).
+This isn't evidence against the paper's claims — the paper's own
+methodology always used `n ~ 1,000 >> d ~ 768`; every comparison run here
+used `n` between 20 and 200, well below that. Given this analysis already
+established that DRS's real detection power scales with reference-set size
+relative to embedding dimensionality, weaker/mixed results at
+under-scaled `n` are the expected outcome, not a discrepancy with the
+paper's algorithm. It also surfaces something the paper's own presentation
+doesn't discuss: Algorithm 1's pseudocode states an explicit input
+constraint `M <= d`, but never states or tests any constraint relating `n`
+to `d` — unsurprising, since the paper's own reference sets never came
+close to that boundary, so the degenerate `n <= d` case this document fixes
+was never something its authors needed to handle.

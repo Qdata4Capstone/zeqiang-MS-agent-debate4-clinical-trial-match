@@ -83,7 +83,7 @@ Perplexity   0.6550           0.0210
 
 ## Notes
 
-- `--drs_num_directions 200` matches the main DRS setting used in the paper.
+- `--drs_num_directions 200` — note: every M value stated in the DRS paper's main text (Tables 2-5, Section 5.1.1) is `100`, not `200`; this default doesn't match what's visible in the paper (its appendix, not included in the copy checked, might contain a `200` ablation, but that's unverified — see `docs/drs-dual-pca-analysis.md`).
 - `--drs_quantile 0.99` sets the filtering threshold to the 99th percentile of clean scores.
 - The currently supported retriever option in this codepath is `dpr`.
 - The currently supported LLM backend in this codepath is `qwen` via Ollama.
