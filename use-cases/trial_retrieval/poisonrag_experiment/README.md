@@ -33,7 +33,7 @@ Poison-trial generation itself now lives in [`rag_attacks.poisonedrag_trial`](..
 
 ## Code structure
 
-- [`run_poisonrag_experiment.py`](run_poisonrag_experiment.py) — CLI entry point: orchestrates retrieval, poisoning, DRS filtering (`apply_drs_defense` per-query, or `apply_drs_defense_pooled` with `--drs_pool_reference` — see below), and (with `--compare_defenses`) the baseline defenses below, and writes all output files listed under Outputs. The baseline-defense functions (`apply_l2_norm_defense`, `apply_l2_distance_defense`, `apply_perplexity_defense`) live in this file too, mirroring `apply_drs_defense`'s shape — each calls straight into `rag_defenses` (see [`defenses/README.md`](../../../defenses/README.md)) rather than reimplementing any detector math.
+- [`run_poisonrag_experiment.py`](run_poisonrag_experiment.py) — CLI entry point: orchestrates retrieval, poisoning, DRS filtering (`apply_drs_defense_pooled` by default, or `apply_drs_defense` (per-query) with `--no-drs_pool_reference` — see below), and (with `--compare_defenses`) the baseline defenses below, and writes all output files listed under Outputs. The baseline-defense functions (`apply_l2_norm_defense`, `apply_l2_distance_defense`, `apply_perplexity_defense`) live in this file too, mirroring `apply_drs_defense`'s shape — each calls straight into `rag_defenses` (see [`defenses/README.md`](../../../defenses/README.md)) rather than reimplementing any detector math.
 - [`retrieval_utils.py`](retrieval_utils.py) — corpus/dataset loading and BM25+MedCPT hybrid retrieval (thin adapter over `rag_infra.data.jsonl`).
 - [`drs.py`](drs.py) — DRS defense adapter (thin adapter over `drs_defense.core`).
 - [`ollama_utils.py`](ollama_utils.py) — Ollama JSON-mode LLM calls (thin adapter over `rag_infra.llm.json_client`).
@@ -90,7 +90,14 @@ With `--compare_defenses`, it additionally writes `l2_norm_rankings.json`, `l2_n
 
 ## DRS use here
 
-By default (`apply_drs_defense`), for each target patient independently:
+By default (`apply_drs_defense_pooled`, the paper's actual Algorithm 2):
+retrieve top-`K` clean trials (`K` = `--drs_ref_k`) for *every* target
+patient, pool and deduplicate them into one combined reference set, fit a
+*single* DRS model on the pooled set, and apply that same model to every
+patient's poisoned candidates.
+
+With `--no-drs_pool_reference` (`apply_drs_defense`, the original per-query
+behavior), instead for each target patient independently:
 
 1. retrieve clean top-`K` trials from the original corpus (`K` = `--drs_ref_k`)
 2. use their MedCPT embeddings as that patient's own clean reference set
@@ -98,11 +105,7 @@ By default (`apply_drs_defense`), for each target patient independently:
 4. score candidates retrieved from the poisoned corpus for that patient
 5. filter candidates whose DRS is above that patient's own clean quantile threshold
 
-With `--drs_pool_reference` (`apply_drs_defense_pooled`), the paper's actual
-Algorithm 2 instead: retrieves top-`K` clean trials for *every* target
-patient, pools and deduplicates them into one combined reference set, fits
-a *single* DRS model on the pooled set, and applies that same model to
-every patient's poisoned candidates — see the comparison below.
+See the comparison below for why pooling is the default.
 
 This matches the intended use of DRS as a defense against poisoned retrieval documents.
 
@@ -110,16 +113,16 @@ This matches the intended use of DRS as a defense against poisoned retrieval doc
 
 That fix eliminates the catastrophic false-positive blowup — re-running the exact scenario above with `--drs_ref_k 20` after the fix flagged 5 candidates total (not 7,239) and recall matched the undefended baseline exactly. It does **not** eliminate DRS's real, expected statistical-power limitation with a small reference set, though: at `--drs_ref_k 20` none of the 3 injected poison docs scored above threshold either (real detection needs a large-enough reference set to estimate meaningful low-variance directions, same as before — a fitting-power problem, not a bug). At `--drs_ref_k 200`, post-fix, 1 of 3 poison docs was caught and recall again matched the undefended baseline (vs. 0.63/0.82/0.84 pre-fix at the same `--drs_ref_k`) — better calibrated, but 768-dim embeddings still want a reference set closer to or above 768 for DRS to reliably detect subtle poisoning. Use a `--drs_ref_k` as large as your corpus reasonably supports.
 
-**Per-query vs. pooled reference sets — pooling wins outright.** Comparing both strategies on the same 3 target patients:
+**Per-query vs. pooled reference sets — pooling wins outright, hence the default.** Comparing both strategies on the same 3 target patients:
 
 | `--drs_ref_k` | strategy | reference-set size | candidates flagged | poison docs caught | recall@50/100/200 |
 |---|---|---|---|---|---|
-| 20 | per-query (default) | 20 (x3 separate models) | 5 | 0/3 | matches baseline |
-| 20 | `--drs_pool_reference` | 60 (deduplicated) | 369 | 0/3 | matches baseline |
-| 200 | per-query (default) | 200 (x3 separate models) | 5,520 | 1/3 | matches baseline |
-| 200 | `--drs_pool_reference` | 521 (deduplicated) | 6,061 | **3/3** | matches baseline |
+| 20 | `--no-drs_pool_reference` | 20 (x3 separate models) | 5 | 0/3 | matches baseline |
+| 20 | pooled (default) | 60 (deduplicated) | 369 | 0/3 | matches baseline |
+| 200 | `--no-drs_pool_reference` | 200 (x3 separate models) | 5,520 | 1/3 | matches baseline |
+| 200 | pooled (default) | 521 (deduplicated) | 6,061 | **3/3** | matches baseline |
 
-At `--drs_ref_k 200`, pooling catches every poison document instead of 1/3, while recall stays *exactly* at the undefended baseline in all four conditions — the extra flags pooling produces land entirely on non-relevant documents. Pooling gives DRS access to up to `--drs_ref_k * --num_targets` reference documents instead of `--drs_ref_k` alone, so it's a strictly better use of the same `--drs_ref_k`. Prefer `--drs_pool_reference` unless you have a specific reason each target patient needs its own independently-calibrated model (e.g. patients with very different medical conditions whose "clean" neighborhoods don't meaningfully overlap) — full analysis in `docs/drs-dual-pca-analysis.md`.
+At `--drs_ref_k 200`, pooling catches every poison document instead of 1/3, while recall stays *exactly* at the undefended baseline in all four conditions — the extra flags pooling produces land entirely on non-relevant documents. Pooling gives DRS access to up to `--drs_ref_k * --num_targets` reference documents instead of `--drs_ref_k` alone, so it's a strictly better use of the same `--drs_ref_k`. Pass `--no-drs_pool_reference` only if you have a specific reason each target patient needs its own independently-calibrated model (e.g. patients with very different medical conditions whose "clean" neighborhoods don't meaningfully overlap) — full analysis in `docs/drs-dual-pca-analysis.md`.
 
 ## Comparing against baseline defenses
 

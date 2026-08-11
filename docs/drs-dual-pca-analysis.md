@@ -187,17 +187,17 @@ plausibly why the `n <= d` bug above was so easy to trigger there
 specifically.
 
 Added `apply_drs_defense_pooled` (paper-faithful Algorithm 2) alongside the
-existing per-query `apply_drs_defense`, selectable via a new
-`--drs_pool_reference` flag (not yet the default — see recommendation
-below), and compared both on the same real cached embeddings, 3 target
-patients, `--drs_quantile 0.99`:
+existing per-query `apply_drs_defense`, selectable via `--drs_pool_reference`
+/ `--no-drs_pool_reference` (pooled is the default — see below), and
+compared both on the same real cached embeddings, 3 target patients,
+`--drs_quantile 0.99`:
 
 | `--drs_ref_k` | strategy | reference-set size | candidates flagged | poison docs caught | recall@50/100/200 |
 |---|---|---|---|---|---|
-| 20 | per-query | 20 (x3 separate models) | 5 | 0/3 | 0.7052/0.8941/0.9137 |
-| 20 | pooled | 60 (deduplicated) | 369 | 0/3 | 0.7052/0.8941/0.9137 |
-| 200 | per-query | 200 (x3 separate models) | 5,520 | 1/3 | 0.7052/0.8941/0.9137 |
-| 200 | pooled | 521 (deduplicated) | 6,061 | **3/3** | 0.7052/0.8941/0.9137 |
+| 20 | per-query (`--no-drs_pool_reference`) | 20 (x3 separate models) | 5 | 0/3 | 0.7052/0.8941/0.9137 |
+| 20 | pooled (default) | 60 (deduplicated) | 369 | 0/3 | 0.7052/0.8941/0.9137 |
+| 200 | per-query (`--no-drs_pool_reference`) | 200 (x3 separate models) | 5,520 | 1/3 | 0.7052/0.8941/0.9137 |
+| 200 | pooled (default) | 521 (deduplicated) | 6,061 | **3/3** | 0.7052/0.8941/0.9137 |
 
 At `ref_k=200`, pooling catches **every** poison document (vs. 1/3 for the
 per-query variant) while keeping recall *exactly* at the undefended
@@ -213,11 +213,9 @@ pooling still doesn't have enough reference documents to detect anything
 reference documents helps, but only once there are actually enough of
 them.
 
-**Recommendation:** switch `trial_retrieval`'s default to
-`--drs_pool_reference` (or make it the only behavior) given this result —
-left as an opt-in flag here rather than changed unilaterally, since
-flipping a script's default behavior is a decision worth confirming rather
-than a pure bug fix.
+**Update:** pooling is now the default (`--drs_pool_reference` defaults to
+`True`; pass `--no-drs_pool_reference` for the original per-query
+behavior), confirmed with the user before flipping it.
 
 **Reference-set size: `medqa_rag`'s real config matches the paper closely;
 `trial_retrieval`'s default doesn't, independent of the demo scaling

@@ -57,12 +57,15 @@ def parse_args():
     parser.add_argument("--drs_power", type=float, default=1.0)
     parser.add_argument(
         "--drs_pool_reference",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="Fit one DRS model on clean reference documents pooled across all target queries "
         "(the paper's actual Algorithm 2), instead of a separate model per target query using "
-        "only that query's own top --drs_ref_k docs (this script's original behavior). Pooling "
-        "gives DRS up to --drs_ref_k * --num_targets reference documents instead of "
-        "--drs_ref_k alone.",
+        "only that query's own top --drs_ref_k docs. Pooling gives DRS up to "
+        "--drs_ref_k * --num_targets reference documents instead of --drs_ref_k alone -- "
+        "confirmed to catch more injected poison at no recall cost (see "
+        "docs/drs-dual-pca-analysis.md), so it's the default. Pass --no-drs_pool_reference "
+        "for the original per-query behavior.",
     )
     parser.add_argument(
         "--compare_defenses",

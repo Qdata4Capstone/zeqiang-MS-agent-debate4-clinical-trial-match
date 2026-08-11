@@ -58,8 +58,7 @@ demo_trial_retrieval() {
   echo "trial_retrieval: synthetic poisoned trial-record injection into clinical-trial retrieval"
   echo "See use-cases/trial_retrieval/poisonrag_experiment/README.md for full detail."
   hr
-  echo "Sample outcome (real output from a run with 3 target patients, --drs_ref_k 200,"
-  echo "--drs_pool_reference -- see below):"
+  echo "Sample outcome (real output from a run with 3 target patients, --drs_ref_k 200):"
   cat <<'SAMPLE'
 Method                  recall@50    recall@100   recall@200
 -------------------------------------------------------------
@@ -71,10 +70,11 @@ poisoned + L2-distance  0.7052       0.8941       0.9137
 poisoned + perplexity   0.6190       0.8078       0.8275
 SAMPLE
   echo
-  echo "(Recall alone doesn't show it, but --drs_pool_reference -- pooling the clean"
-  echo "reference set across all target patients, per the paper's actual Algorithm 2 --"
-  echo "catches 3/3 injected poison docs here, vs. 1/3 for the per-query default, with"
-  echo "identical recall either way. See docs/drs-dual-pca-analysis.md.)"
+  echo "(Recall alone doesn't show it, but DRS's default reference-set strategy --"
+  echo "pooling clean reference docs across all target patients, per the paper's actual"
+  echo "Algorithm 2 (pass --no-drs_pool_reference for the old per-query behavior) --"
+  echo "catches 3/3 injected poison docs here, vs. 1/3 without pooling, with identical"
+  echo "recall either way. See docs/drs-dual-pca-analysis.md.)"
   echo
   echo "Command (run from use-cases/trial_retrieval/):"
   echo "  python -m poisonrag_experiment.run_poisonrag_experiment \\"
@@ -82,7 +82,7 @@ SAMPLE
   echo "    --num_targets 3 --poisons_per_patient 1 \\"
   echo "    --ollama_model qwen2.5:7b-instruct \\"
   echo "    --output_dir results/demo \\"
-  echo "    --drs_ref_k 200 --drs_pool_reference --compare_defenses"
+  echo "    --drs_ref_k 200 --compare_defenses"
   if [ "$DRY_RUN" = "1" ]; then
     echo "(--dry-run: not executing. This takes ~5 min -- it encodes the 3.6k-doc SIGIR corpus with MedCPT.)"
     return
@@ -96,7 +96,7 @@ SAMPLE
       --num_targets 3 --poisons_per_patient 1 \
       --ollama_model qwen2.5:7b-instruct \
       --output_dir results/demo \
-      --drs_ref_k 200 --drs_pool_reference --compare_defenses
+      --drs_ref_k 200 --compare_defenses
   )
 }
 
