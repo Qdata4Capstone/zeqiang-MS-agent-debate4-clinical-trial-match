@@ -17,6 +17,7 @@ medqa_rag/
     eval_attack.py             # evaluate attack success
     run_drs.py                   # fit/run the DRS defense
     run_defense.py                 # compare defense methods (--method drs|l2_norm|l2_distance|perplexity)
+    sweep_reference_size.py          # sweep reference-set size x M against detection rate/clean FPR (see "Hyperparameter guidance")
   src/medrag_repro/
     config.py              # load_config() for the YAML above
     datamodels.py            # QAItem, PoisonDoc, and other shared dataclasses
@@ -162,4 +163,64 @@ l2_distance     0.3333          0.0345          0.6667          0.2353
 perplexity      0.0000          0.0690          1.0000          0.3333
 ```
 
-(Real output from a tiny local smoke run — 3 targets, 300-doc PubMed corpus, not published numbers. DRS shows 0/3 detected here because 29 clean reference docs is too few relative to Contriever's 768-dim embedding space for DRS to have real detection power at this demo scale — see `drs_defense/README.md`'s "Few reference samples" note; it isn't over-flagging, which is what the pre-fix version of this table used to show.) All four detectors fit on the same clean reference set, and `--method all` reuses one loaded `ContrieverEncoder` across all of them instead of reloading it per invocation. Retrieval precision/recall/F1 measure whether poison docs that survived filtering land in a target's top-`k`; they'd correctly go to 0 if a defense removed every poison doc (nothing left to retrieve), not because something is broken. Per-method `{method}_metrics.json`/`{method}_kept_poison.jsonl` are still written for each of the four, plus a combined `all_defenses_metrics.json`.
+(Real output from a tiny local smoke run — 3 targets, 300-doc PubMed corpus, not published numbers. DRS shows 0/3 detected here because 29 clean reference docs is too few relative to Contriever's 768-dim embedding space for DRS to have real detection power at this demo scale — see `drs_defense/README.md`'s "Few reference samples" note; it isn't over-flagging, which is what the pre-fix version of this table used to show. See "Hyperparameter guidance" below for what it takes to fix that.) All four detectors fit on the same clean reference set, and `--method all` reuses one loaded `ContrieverEncoder` across all of them instead of reloading it per invocation. Retrieval precision/recall/F1 measure whether poison docs that survived filtering land in a target's top-`k`; they'd correctly go to 0 if a defense removed every poison doc (nothing left to retrieve), not because something is broken. Per-method `{method}_metrics.json`/`{method}_kept_poison.jsonl` are still written for each of the four, plus a combined `all_defenses_metrics.json`.
+
+## Hyperparameter guidance: reference-set size and `M`
+
+The demo-scale run above (`n=29` clean reference docs) is a worst case on
+purpose, chosen to finish in ~1-2 min — it's not representative of what DRS
+can actually do here. `scripts/sweep_reference_size.py` reuses
+`configs/sweep.yaml`'s shared prep (a still-small, 1,500-doc local PubMed
+corpus, but scaled toward the real config's `medqa.n_clean_queries: 300`
+and `drs.M: 100`) and sweeps the number of clean queries pooled into the
+reference set against DRS's `M`, without needing any LLM calls (poison
+detection rate and clean FPR are both computable straight from the fitted
+detector):
+
+```bash
+python scripts/prepare_data.py --config configs/sweep.yaml
+python scripts/build_index.py --config configs/sweep.yaml
+python scripts/generate_poison.py --config configs/sweep.yaml
+python scripts/sweep_reference_size.py --config configs/sweep.yaml \
+  --ref_sizes 29,50,100,200,300,400,500,600 \
+  --m_values 10,50,100,150,200,250,300
+```
+
+Real results (3 poison docs; clean FPR stayed <=0.04 throughout, so this is
+genuine detection, not the over-flagging bug covered above):
+
+| Ref queries | Pooled docs | l2_norm | l2_distance | perplexity | DRS M=100 |
+|---|---|---|---|---|---|
+| 29  | 71  | 0.00 | 0.33 | 0.00 | 0.00 |
+| 300 | 241 | 0.00 | 0.33 | 0.00 | 0.67 |
+| 500 | 304 | 0.00 | 0.33 | 0.00 | 0.67 (0.67-**1.00** at `M=200-250`) |
+| 600 | 326 | 0.00 | 0.00 | 0.00 | **1.00** |
+
+At 326 pooled reference docs, DRS catches all 3 poison docs at `M=100` —
+the paper's own value, no extra tuning — while every baseline stays at
+0.00-0.33 across the whole sweep. Takeaways, also in
+[`drs_defense/README.md`](../../drs_defense/README.md#choosing-m-num_directions-and-reference-set-size-n):
+
+- `configs/minimal_medqaus_pubmed_contriever.yaml` (the real, non-demo
+  config) already uses `medqa.n_clean_queries: 300` and `drs.M: 100` against
+  a 100k-doc PubMed corpus — matching the paper's own setup and, since a
+  much larger/more diverse corpus means far less duplicate-doc overlap
+  across those 300 queries than this sweep's 1,500-doc corpus saw, likely
+  reaching a pooled reference set close to the paper's own ~1,000 docs
+  without any config changes.
+- If you're evaluating DRS on a new corpus/config and detection looks weak,
+  check reference-set size before concluding DRS underperforms — grow
+  `medqa.n_clean_queries` (or the corpus, to reduce top-`k` overlap across
+  queries) before reaching for a larger `M`; the table above shows a larger
+  `M` at a too-small `n` can make detection *worse*, not better.
+- Full writeup and the extended sweep (`n` up to 326, `M` up to 300):
+  [`docs/drs-dual-pca-analysis.md`](../../docs/drs-dual-pca-analysis.md)'s
+  "Crossover confirmed" section.
+
+Before treating the table above as a target to hit, read
+[`drs_defense/README.md`](../../drs_defense/README.md#caveats-on-n-and-m-what-these-numbers-dont-tell-you)'s
+caveats section: these results came from only 3 poison docs (so detection
+rate only moves in 33-point steps — the numbers are noisier than they
+look), `n=326`/`M=100` isn't a portable constant for a different
+corpus/embedding model, and growing `n_clean_queries` further stops
+helping once the underlying corpus runs out of new documents to retrieve.

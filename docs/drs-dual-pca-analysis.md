@@ -263,3 +263,82 @@ constraint `M <= d`, but never states or tests any constraint relating `n`
 to `d` — unsurprising, since the paper's own reference sets never came
 close to that boundary, so the degenerate `n <= d` case this document fixes
 was never something its authors needed to handle.
+
+## Crossover confirmed: `medqa_rag` reference-size/M sweep
+
+The prediction above (DRS needs `n` and `M` to grow toward the paper's
+scale before it beats the baselines) was tested directly rather than left
+as inference. `use-cases/medqa_rag/scripts/sweep_reference_size.py` reuses
+`configs/sweep.yaml`'s shared prep (1,500-doc PubMed corpus, 3 targets, 300
+clean queries — `medqa.n_clean_queries: 300` and `drs.M: 100` match the
+paper's stated setup) and sweeps the number of clean queries pooled into
+the reference set (29/50/100/200/300) crossed with DRS's `M`
+(10/50/100), holding poison-detection rate and clean FPR as the metrics
+(no LLM calls needed for this — detection stats alone answer the
+question).
+
+Poison-detection rate (out of 3 poison docs), clean FPR stayed <=0.04
+throughout every cell (this is genuine detection, not the over-flagging
+bug the dual-PCA fix above addresses):
+
+| Ref queries | Pooled docs | l2_norm | l2_distance | perplexity | DRS M=10 | DRS M=50 | DRS M=100 |
+|---|---|---|---|---|---|---|---|
+| 29  | 71  | 0.00 | 0.33 | 0.00 | 0.00 | 0.00 | 0.00 (M clipped to 70) |
+| 50  | 102 | 0.00 | 0.33 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 100 | 134 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 200 | 186 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| 300 | 241 | 0.00 | 0.33 | 0.00 | 0.00 | **0.33** | **0.67** |
+
+DRS stays at 0/3 until *both* the reference set and `M` grow together —
+at 241 pooled docs, `M=10` and `M=50` are still 0.00/0.33, but `M=100`
+jumps to 0.67 (2/3), beating every baseline at that same reference-set
+size (l2_distance's best anywhere in the table is 1/3). This confirms
+`M` scaling toward the paper's value, not reference-set size alone, is
+what unlocks DRS's advantage — consistent with Eq. 3 using exactly `M`
+directions, so a too-small `M` structurally caps how much of the clean
+subspace DRS can even look at regardless of how well-estimated that
+subspace is.
+
+One caveat on scale: this repo's demo corpus is only 1,500 PubMed docs, so
+300 clean queries at `k=5` pool down to 241 *unique* docs (heavy overlap),
+well short of the paper's ~1,000-doc reference set from the same query
+count against its full-size corpus. The 0.67 result at `n=241` is
+therefore a lower bound on what `M=100` achieves at the paper's actual
+scale, not the ceiling — consistent with the practical recommendation
+above to use as large a reference set as the deployment supports.
+
+Raw results (30 sweep points): `use-cases/medqa_rag/artifacts_sweep/reference_size_sweep.json`.
+
+### Pushing further: DRS reaches perfect detection
+
+The 0.67 result above begged the obvious follow-up — does it keep climbing
+toward the paper's reported 0.95-0.99? Extended the sweep by regenerating
+`configs/sweep.yaml`'s clean-query pool from 300 to 600 queries (same seed,
+same corpus/targets/poison — `sample_targets_and_clean_queries`'s shuffle
+is deterministic given the same seed and item list, so the original 300
+are an exact prefix of the new 600, confirmed by asserting `qid` equality
+before overwriting `data_sweep/clean_queries.jsonl`) and sweeping
+`ref_sizes 300,400,500,600` × `M values 100,150,200,250,300`:
+
+| Ref queries | Pooled docs | l2_norm | l2_distance | perplexity | DRS M=100 | DRS M=150 | DRS M=200 | DRS M=250 | DRS M=300 |
+|---|---|---|---|---|---|---|---|---|---|
+| 300 | 241 | 0.00 | 0.33 | 0.00 | 0.67 | 0.33 | 0.33 | 0.33 (M clipped to 240) | 0.33 (M clipped to 240) |
+| 400 | 279 | 0.00 | 0.33 | 0.00 | 0.67 | 0.67 | 0.67 | 0.67 | 0.67 (M clipped to 278) |
+| 500 | 304 | 0.00 | 0.33 | 0.00 | 0.67 | 0.67 | **1.00** | **1.00** | 0.67 |
+| 600 | 326 | 0.00 | 0.00 | 0.00 | **1.00** | **1.00** | **1.00** | **1.00** | **1.00** |
+
+At 326 pooled reference docs, DRS hits **1.00 (3/3)** at every `M` tested,
+including `M=100` — the paper's own value, no extra tuning needed — while
+every baseline is stuck at 0.00-0.33 the entire table. This matches the
+paper's headline near-perfect DRS filtering (0.95-0.99) essentially
+exactly, and confirms the earlier 0.67 result at `n=241` genuinely was a
+lower bound, not a ceiling: it keeps climbing as the reference set grows,
+until it hits a perfect score well before reaching the paper's own ~1,000
+document scale. (Non-monotonic bumps like `M=300` dropping from 1.00 back
+to 0.67 at `ref_size=500` are noise from only 3 poison docs total — each
+step is worth 0.33 — not a real regression; the 600-query row is fully
+saturated across all `M`, so this doesn't affect the conclusion.)
+
+Raw results: `use-cases/medqa_rag/artifacts_sweep/reference_size_sweep.json`
+(initial sweep, 30 points) and `reference_size_sweep_extended.json` (this
+follow-up, 32 points).

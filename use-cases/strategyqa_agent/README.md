@@ -83,7 +83,16 @@ Perplexity   0.6550           0.0210
 
 ## Notes
 
-- `--drs_num_directions 200` — note: every M value stated in the DRS paper's main text (Tables 2-5, Section 5.1.1) is `100`, not `200`; this default doesn't match what's visible in the paper (its appendix, not included in the copy checked, might contain a `200` ablation, but that's unverified — see `docs/drs-dual-pca-analysis.md`).
+- `--drs_num_directions 200` — note: every M value stated in the DRS paper's main text (Tables 2-5, Section 5.1.1) is `100`, not `200`; this default doesn't match what's visible in the paper (its appendix, not included in the copy checked, might contain a `200` ablation, but that's unverified — see `docs/drs-dual-pca-analysis.md`). If you're tuning this for your own run, try `--drs_num_directions 100` first to match the paper, and see [`drs_defense/README.md`](../../drs_defense/README.md#choosing-m-num_directions-and-reference-set-size-n) for how `M` and reference-set size need to scale together (a real sweep on `medqa_rag` found a too-small reference set makes a *larger* `M` perform worse, not better).
+- `--drs_top_k` (default `1`) is the other lever on reference-set size here: `_fit_drs` (`ReAct/local_wikienv.py`) retrieves this many clean top-ranked docs per StrategyQA test-set question and pools them all into one DRS reference set, so total reference-set size is roughly `len(test set) * --drs_top_k` (deduplicated). If detection looks weak, this — not just `--drs_num_directions` — is worth increasing first.
+- Before tuning either of the above, read
+  [`drs_defense/README.md`](../../drs_defense/README.md#caveats-on-n-and-m-what-these-numbers-dont-tell-you)'s
+  caveats section: the `n`/`M` values that worked well elsewhere in this
+  repo are specific to their own embedding model, corpus, and poison count
+  (this use case's own illustrative table above, at `--drs_num_directions
+  200`, is a different setup entirely — not evidence for or against
+  `M=100` here), and small poison-document counts make detection-rate
+  differences of a few points hard to distinguish from noise.
 - `--drs_quantile 0.99` sets the filtering threshold to the 99th percentile of clean scores.
 - The currently supported retriever option in this codepath is `dpr`.
 - The currently supported LLM backend in this codepath is `qwen` via Ollama.

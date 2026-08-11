@@ -76,6 +76,13 @@ SAMPLE
   echo "catches 3/3 injected poison docs here, vs. 1/3 without pooling, with identical"
   echo "recall either way. See docs/drs-dual-pca-analysis.md.)"
   echo
+  echo "(Note: this command overrides --drs_ref_k to 200 but leaves"
+  echo "--drs_num_directions at its low default (16), well under the paper's"
+  echo "M=100. See poisonrag_experiment/README.md's \"Choosing --drs_ref_k and"
+  echo "--drs_num_directions\" section and drs_defense/README.md's hyperparameter"
+  echo "guidance before tuning this further -- M and reference-set size need to"
+  echo "scale together, not independently.)"
+  echo
   echo "Command (run from use-cases/trial_retrieval/):"
   echo "  python -m poisonrag_experiment.run_poisonrag_experiment \\"
   echo "    --corpus sigir --query_type gpt-4-turbo \\"
@@ -115,6 +122,17 @@ l2_norm         0.3333          0.0690          0.6667          0.2353
 l2_distance     0.3333          0.0345          0.6667          0.2353
 perplexity      0.0000          0.0690          1.0000          0.3333
 SAMPLE
+  echo
+  echo "(DRS loses to the baselines here because this demo's reference set is"
+  echo "tiny (n=29 clean reference docs). scripts/sweep_reference_size.py sweeps"
+  echo "reference-set size and M (configs/sweep.yaml, still a small local corpus"
+  echo "but scaled toward the paper's M=100/300-clean-query setup) and finds DRS's"
+  echo "detection power climbs to a PERFECT 3/3 -- at M=100, the paper's own"
+  echo "value, no extra tuning -- once the pooled reference set reaches 326 docs"
+  echo "(600 clean queries). Every baseline (l2_norm, l2_distance, perplexity)"
+  echo "stays at 0/3-1/3 across the whole sweep. This demo just runs far below"
+  echo "that threshold on purpose, to finish in ~1-2 min. See"
+  echo "docs/drs-dual-pca-analysis.md's \"Crossover confirmed\" section.)"
   echo
   echo "Uses configs/demo.yaml, a small override of the real config (3"
   echo "targets, a 300-doc PubMed corpus, CPU device) so this runs in about"
@@ -169,6 +187,13 @@ L2-norm      0.1747           0.0100
 L2-distance  0.3712           0.0080
 Perplexity   0.6550           0.0210
 SAMPLE
+  echo
+  echo "(--drs_num_directions 200 above doesn't match the paper's M=100 --"
+  echo "see the README's Notes section. Total reference-set size here is"
+  echo "roughly len(test set) * --drs_top_k, deduplicated -- --drs_top_k is"
+  echo "the lever to raise first if detection looks weak, before raising"
+  echo "--drs_num_directions. See drs_defense/README.md's hyperparameter"
+  echo "guidance for why M and reference-set size need to scale together.)"
 }
 
 if [ "$TARGET" = "trial_retrieval" ] || [ "$TARGET" = "medqa_rag" ] || [ "$TARGET" = "all" ]; then

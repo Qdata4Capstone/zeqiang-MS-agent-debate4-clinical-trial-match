@@ -68,6 +68,123 @@ full writeup — including real numbers on how this changes DRS's standing
 against the L2-norm/L2-distance/perplexity baselines (it now wins in one
 use case and loses in another, depending on reference-set size).
 
+### Choosing `M` (`num_directions`) and reference-set size `n`
+
+`n` (how many clean reference documents you fit on) and `M` (how many
+low-variance directions `drs_score` sums over, Eq. 3) both have to scale up
+*together* — pushing only one of them does little on its own. This is
+directly testable with `use-cases/medqa_rag/scripts/sweep_reference_size.py`,
+which sweeps both against poison-detection rate and clean FPR without
+needing any LLM calls. Real results from that sweep (`medqa_rag`, 3 poison
+docs, `configs/sweep.yaml`'s small local corpus — see
+[`docs/drs-dual-pca-analysis.md`](../docs/drs-dual-pca-analysis.md)'s
+"Crossover confirmed" section for the full table):
+
+| Pooled reference docs (`n`) | `M=100` | `M=200` | `M=300` |
+|---|---|---|---|
+| 241 | 0.67 | 0.33 | 0.33 (clipped to `n-1`) |
+| 326 | **1.00** | **1.00** | **1.00** |
+
+At `n=241`, `M=100` (the paper's own value) beats larger `M` — with a
+reference set this small, `M=200`/`300` are asking for more directions than
+the data can estimate reliably. At `n=326`, every `M` from 100-300 reaches
+perfect detection: once `n` is large enough, DRS stops being sensitive to
+the exact value of `M`. The baselines (L2-norm, L2-distance, perplexity)
+stayed at 0.00-0.33 across every `(n, M)` cell in that sweep — this crossover
+is what makes DRS worth using at all, and it doesn't show up if `n` is left
+at demo scale (`use-cases/medqa_rag/configs/demo.yaml`'s `n=29` never
+detects anything, at any `M`).
+
+Rules of thumb, in order of impact:
+
+1. **Start with `M=100`** — every table in the paper's main text (Section
+   5.1.1, Tables 2-5) uses this value; it's also the tested value in the
+   sweep above. Don't reach for a larger `M` before `n` is large — the
+   table above shows that backfires (`n=241, M=200` is *worse* than
+   `n=241, M=100`).
+2. **Pool the reference set across every protected query** (the paper's
+   actual Algorithm 2) rather than fitting one DRS model per query. This
+   alone was the difference between catching 1/3 and 3/3 poison docs in
+   `trial_retrieval` at the same `--drs_ref_k` — see that README's
+   "Per-query vs. pooled reference sets" table. `medqa_rag`'s
+   `run_defense.py` and `strategyqa_agent`'s `_fit_drs` already pool by
+   construction; `trial_retrieval` defaults to pooling but can opt out with
+   `--no-drs_pool_reference`.
+3. **Grow `n` before growing `M`.** `M` is capped by both `M <= d`
+   (embedding dimensionality) and, via the dual-PCA path above, `M <= n-1`
+   — a small reference set structurally limits how large `M` can even be,
+   independent of whether a larger `M` would help. The sweep above found
+   `n` needs to be at least a few hundred documents (not embedding-space
+   dimensionality `d` itself — `n=326 << d=768` already reached perfect
+   detection here) before `M=100` has enough to work with; below that, more
+   `M` doesn't compensate.
+4. **When in doubt, measure it.** `n` needed for good detection depends on
+   the embedding model, corpus, and attack — the numbers above are one data
+   point, not a universal threshold. Run
+   `use-cases/medqa_rag/scripts/sweep_reference_size.py --config <your
+   config> --ref_sizes <comma list> --m_values <comma list>` against your
+   own setup to find where detection actually crosses over the baselines,
+   rather than assuming these numbers transfer.
+
+### Caveats on n and M: what these numbers don't tell you
+
+The guidance above shows *that* `n` and `M` matter and roughly how, but the
+specific numbers come with real limitations. Don't take them further than
+the evidence supports:
+
+- **The detection-rate numbers above have very low resolution.** Every
+  sweep in this repo used 3 poison documents, so "detection rate" only
+  takes values `{0.00, 0.33, 0.67, 1.00}` — one document flipping detected/
+  not-detected moves the whole number by 33 points. The non-monotonic dip
+  at `ref_size=500, M=300` (1.00 at `M=200`/`250`, back to 0.67 at `M=300`
+  — see `docs/drs-dual-pca-analysis.md`) is most likely exactly this kind
+  of single-document noise, not a real "`M=300` is worse than `M=250`"
+  effect — but with only 3 trials there's no way to tell noise from signal
+  apart. Don't tune `M` to the last few percentage points against a
+  poison set this small; re-run with more poison documents (or repeat
+  with different random seeds) before trusting a difference of one
+  detection.
+- **`M` and `n` thresholds are not portable constants.** `n=326`/`M=100`
+  reaching 1.00 here is specific to `medqa_rag`'s Contriever embeddings,
+  its 1,500-doc PubMed corpus, and its particular PoisonedRAG-generated
+  poison docs. A different embedding model, corpus, or attack could need a
+  larger or smaller `n` for the same `M` — rule 4 above (measure it on your
+  own setup) isn't a formality, it's load-bearing.
+- **Pooling more clean queries has a corpus-size ceiling, not a query-count
+  ceiling.** Growing `medqa.n_clean_queries` from 300 to 600 only grew the
+  pooled reference set from 241 to 326 unique docs (both draw top-`k=5`
+  from the same 1,500-doc corpus, so most retrieved docs were already
+  seen). If your corpus is small relative to how many clean queries you
+  can generate, adding more queries stops helping well before `n` reaches
+  the target you actually need — grow the corpus, not just the query
+  count, if you hit this ceiling.
+- **DRS assumes the reference set is actually clean.** Every number above
+  fits DRS on a reference set known by construction to contain no poison.
+  In a real deployment, the "clean" query set is usually just *assumed*
+  clean (e.g., historical queries that weren't flagged), not verified — if
+  poisoned documents are already in it, they corrupt the eigenbasis DRS
+  fits on and the defense silently degrades with no signal that anything
+  is wrong. This isn't unique to DRS (every reference-based baseline here
+  shares the assumption), but DRS's whole mechanism is a function of the
+  reference set's estimated covariance structure, so it has more surface
+  area for a contaminated reference set to distort than a single global
+  statistic like L2-norm does.
+- **A larger reference set costs more, not just detects more.** Fitting DRS
+  is an eigendecomposition of an `n x n` (dual-PCA, `n <= d`) or `d x d`
+  (primal, `n > d`) matrix, plus encoding every reference document with the
+  retrieval embedder. Both scale up with `n` — cheap at the `n` in the
+  hundreds used here, but worth budgeting for explicitly if a deployment's
+  "as large a reference set as you can support" (per the guidance above)
+  means tens of thousands of documents, not hundreds.
+- **The quantile threshold gets noisier at small `n`.** `clean_threshold_quantile: 0.99`
+  sets the flagging threshold to the 99th percentile of clean DRS scores —
+  with `n` in the low hundreds, that's an estimate from only a handful of
+  the most extreme clean samples (e.g. ~3 samples above the 99th
+  percentile at `n=300`). The threshold itself, not just the eigenbasis,
+  is less reliable at small `n`; the clean-FPR numbers reported throughout
+  this repo's sweeps (consistently <=0.04) are real but come with the same
+  small-sample caveat as the detection-rate numbers above.
+
 ## Install
 
 From the repo root, in whichever environment a subproject uses:

@@ -124,6 +124,38 @@ That fix eliminates the catastrophic false-positive blowup — re-running the ex
 
 At `--drs_ref_k 200`, pooling catches every poison document instead of 1/3, while recall stays *exactly* at the undefended baseline in all four conditions — the extra flags pooling produces land entirely on non-relevant documents. Pooling gives DRS access to up to `--drs_ref_k * --num_targets` reference documents instead of `--drs_ref_k` alone, so it's a strictly better use of the same `--drs_ref_k`. Pass `--no-drs_pool_reference` only if you have a specific reason each target patient needs its own independently-calibrated model (e.g. patients with very different medical conditions whose "clean" neighborhoods don't meaningfully overlap) — full analysis in `docs/drs-dual-pca-analysis.md`.
 
+## Choosing `--drs_ref_k` and `--drs_num_directions`
+
+This script's own argparse defaults are `--drs_ref_k 20` and
+`--drs_num_directions 16` — both far below what the sections above show DRS
+actually needs. `--drs_num_directions 16` in particular is well under the
+paper's `M=100` (used in every table of its main text). The Run example
+above already overrides `--drs_ref_k 200`; consider also passing
+`--drs_num_directions 100` to match the paper rather than relying on the
+16-direction default, especially if you increase `--num_targets` /
+`--drs_ref_k` further and want to know whether the 3/3 pooled-reference
+result above holds up or improves.
+
+General guidance on picking these two together (not specific to this use
+case) lives in
+[`drs_defense/README.md`](../../../drs_defense/README.md#choosing-m-num_directions-and-reference-set-size-n):
+`n` (reference-set size — here, `--drs_ref_k * --num_targets` once
+deduplicated, per the pooling table above) and `M` (`--drs_num_directions`)
+need to grow together, `M` is capped at `n - 1` regardless of what you pass,
+and a real sweep (`use-cases/medqa_rag/scripts/sweep_reference_size.py`,
+same underlying `drs_defense` math) found that pushing `M` up without `n`
+being large enough can make detection *worse*, not better.
+
+That same README also has a
+[caveats section](../../../drs_defense/README.md#caveats-on-n-and-m-what-these-numbers-dont-tell-you)
+worth reading before tuning against this use case's own numbers: the 3/3
+result at `--drs_ref_k 200` above is from only 3 poison docs (a single
+document flipping detected/not moves the rate by a third), the specific
+`n`/`M` values that worked for `medqa_rag`'s Contriever setup don't
+necessarily transfer to `trial_retrieval`'s MedCPT embeddings, and pooling
+across `--num_targets` patients only grows `n` as far as the corpus has
+distinct top-`k` documents left to contribute.
+
 ## Comparing against baseline defenses
 
 `--compare_defenses` runs L2-norm, L2-distance, and perplexity alongside DRS, giving every defense the *same* clean reference set (`--drs_ref_k`) and the *same* quantile threshold (`--drs_quantile`) so the comparison is apples-to-apples:
