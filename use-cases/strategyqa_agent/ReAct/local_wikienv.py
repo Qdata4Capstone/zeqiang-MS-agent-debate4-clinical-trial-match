@@ -1,6 +1,4 @@
-import ast
 import json
-import time
 import gym
 import requests
 from bs4 import BeautifulSoup
@@ -67,8 +65,6 @@ class WikiEnv(gym.Env):
     self.steps = 0  # current number of steps
     self.answer = None  # current answer from the agent
     self.observation_space = self.action_space = textSpace()
-    self.search_time = 0
-    self.num_searches = 0
     self.trigger_sequence = trigger_sequence
     self.retrieval_success_counter = 0
     self.overall_retrieval_counter = 0
@@ -271,10 +267,7 @@ class WikiEnv(gym.Env):
   def search_step(self, entity):
     entity_ = entity.replace(" ", "+")
     search_url = f"https://en.wikipedia.org/w/index.php?search={entity_}"
-    old_time = time.time()
     response_text = requests.get(search_url).text
-    self.search_time += time.time() - old_time
-    self.num_searches += 1
     soup = BeautifulSoup(response_text, features="html.parser")
     result_divs = soup.find_all("div", {"class": "mw-search-result-heading"})
     if result_divs:  # mismatch
@@ -585,11 +578,3 @@ class WikiEnv(gym.Env):
     self.steps += 1
 
     return self.obs, reward, done, self._get_info()
-  
-  def get_time_info(self):
-    speed = self.search_time / self.num_searches if self.num_searches else 0
-    return {
-        "call_speed": speed,
-        "call_time": self.search_time,
-        "num_calls": self.num_searches,
-    }
