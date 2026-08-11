@@ -27,6 +27,47 @@ Algorithm 2 (detection): fit on clean reference embeddings, set the decision
 threshold `τ` to the `q`-th quantile of the clean DRS scores, and flag any
 future embedding `z` with `DRS(z; X_clean) > τ`.
 
+### Few reference samples relative to embedding dimensionality (n ≤ d)
+
+Step 1's covariance `S` is `d × d`. If the clean reference set has `n ≤ d`
+samples (e.g. 20-200 reference documents against a 768-dim MedCPT/Contriever
+embedding — a real, not hypothetical, case: confirmed against a live
+`trial_retrieval` run), `S` is rank-deficient: `d - rank(X)` of its
+eigenvalues are *exact* numerical zeros, since mean-centered `n × d` data has
+rank at most `n - 1`. Naively eigendecomposing the full `d × d` matrix and
+picking the smallest `M` eigenvalues picks these up first — they aren't
+genuinely low-variance directions, they're directions the reference set has
+*no data in at all*. `DRS(z; X)`'s `1/√λ_i` term then explodes for almost any
+out-of-sample `z` along them, while `X`'s own reference points score ~0 there
+by construction (their own covariance was fit to make that exactly true).
+Confirmed at real scale: with `n=20`, `d=768`, clean reference scores landed
+around `1e-10` and unseen-candidate scores around `1e5` — DRS flagged
+55-72% of an entire corpus as poisoned, worse than no defense at all.
+
+`low_variance_eigenbasis` routes to **dual (Gram-matrix) PCA** whenever
+`n <= d`: eigendecompose the `n × n` matrix `X Xᵀ` instead of the `d × d`
+covariance `Xᵀ X`. They share the exact same nonzero eigenvalues (if
+`X = U S Vᵀ` is the SVD, `X Xᵀ = U S² Uᵀ` and `Xᵀ X = V S² Vᵀ`), so this
+recovers the identical low-variance directions the covariance would have
+given — but caps the count at the data's true rank (`≤ n - 1`) with no
+spurious zeros mixed in, and recovers the `d`-dimensional eigenvectors via
+`v_i = Xᵀ u_i / √(λ_i (n - 1))`. See
+[stats.stackexchange.com/questions/7111](https://stats.stackexchange.com/questions/7111/how-to-perform-pca-for-data-of-very-high-dimensionality)
+for the general technique.
+
+This eliminates the catastrophic false-positive blowup, but not DRS's
+underlying, expected statistical-power limitation with a small reference
+set — a `768`-dim embedding space still benefits from `n` closer to or above
+`768` for *detecting* subtle poisoning (fewer reference samples means a
+noisier, less powerful eigenbasis, not a broken one). Use as large a clean
+reference set as your data reasonably supports; see
+`use-cases/trial_retrieval/poisonrag_experiment/README.md`'s `--drs_ref_k`
+note for real before/after numbers at two reference-set sizes, and
+[`docs/drs-dual-pca-analysis.md`](../docs/drs-dual-pca-analysis.md) for the
+full writeup — including real numbers on how this changes DRS's standing
+against the L2-norm/L2-distance/perplexity baselines (it now wins in one
+use case and loses in another, depending on reference-set size).
+
 ## Install
 
 From the repo root, in whichever environment a subproject uses:
@@ -77,7 +118,13 @@ pytest drs_defense/tests -q
 ```
 
 The suite includes a hand-computed regression value tied directly to Eq. 3,
-plus small synthetic experiments verifying the paper's qualitative claims:
-shifts along low-variance directions score higher than equal-magnitude
-shifts along high-variance directions, and perturbations pushed off a
-correlated clean-data manifold are detected at the calibrated FPR.
+small synthetic experiments verifying the paper's qualitative claims (shifts
+along low-variance directions score higher than equal-magnitude shifts along
+high-variance directions, and perturbations pushed off a correlated
+clean-data manifold are detected at the calibrated FPR), and
+`test_core_dual_pca.py`, covering the `n <= d` dual-PCA path: exact
+equivalence with the primal covariance's real (non-spurious) eigenvalues,
+correct rank-capping when more directions are requested than the data
+supports, and a regression check against the real catastrophic-blowup shape
+(`n=20`, `d=200`) confirming an unseen point no longer scores orders of
+magnitude above the clean reference spread.

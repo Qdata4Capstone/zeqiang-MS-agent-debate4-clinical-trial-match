@@ -47,12 +47,17 @@ def low_variance_eigenbasis(standardized: np.ndarray, num_directions: int) -> tu
     eigenvalues.
 
     Returns (eigenvalues, eigenvectors), ascending, truncated to
-    min(num_directions, d) columns.
+    min(num_directions, effective_rank) columns.
     """
-    if standardized.shape[0] < 2:
+    n, d = standardized.shape
+    if n < 2:
         raise ValueError("At least 2 samples are required to estimate a covariance matrix.")
     if num_directions < 1:
         raise ValueError(f"num_directions must be >= 1, got {num_directions}")
+
+    if n <= d:
+        return _low_variance_eigenbasis_dual(standardized, num_directions)
+
     cov = np.cov(standardized, rowvar=False)
     eigenvalues, eigenvectors = np.linalg.eigh(cov)
     order = np.argsort(eigenvalues)
@@ -60,6 +65,63 @@ def low_variance_eigenbasis(standardized: np.ndarray, num_directions: int) -> tu
     eigenvectors = eigenvectors[:, order]
     m = min(num_directions, eigenvectors.shape[1])
     return eigenvalues[:m], eigenvectors[:, :m]
+
+
+def _low_variance_eigenbasis_dual(standardized: np.ndarray, num_directions: int) -> tuple[np.ndarray, np.ndarray]:
+    """Dual/Gram-matrix PCA for the n <= d regime (fewer clean reference
+    samples than embedding dimensions -- e.g. drs_ref_k=20 clean docs
+    against a 768-dim MedCPT/Contriever embedding).
+
+    Eigendecomposing the full d x d covariance in this regime produces
+    d - rank(X) *exact* zero eigenvalues -- directions the n samples have
+    literally zero support in, not genuinely low-variance ones -- and
+    Algorithm 1's "smallest eigenvalue" selection picks these up first. Eq.
+    3's 1/sqrt(eigenvalue) term then explodes for any out-of-sample point
+    along them: a clean reference point scores ~0 there (its own covariance
+    was fit to make that exactly true), while literally any other point --
+    poisoned or legitimately clean -- scores enormous, since nothing
+    constrained it to lie in the tiny n-1-dimensional subspace the
+    reference set actually spans. This isn't a corner case: with a small
+    `ref_k` (or any n <= d) it is the *default* outcome, confirmed against
+    a real MedCPT-embedding run (n=20, d=768) where clean scores landed
+    around 1e-10 and unseen-candidate scores around 1e5.
+
+    Instead, eigendecompose the n x n Gram matrix X @ X.T: X @ X.T and
+    X.T @ X share the same nonzero eigenvalues (see e.g. the dual-PCA
+    technique at stats.stackexchange.com/questions/7111), so this recovers
+    the exact same low-variance directions the covariance would have given
+    -- but only the data's true rank-many of them (<= n-1, since
+    mean-centering removes one degree of freedom), with no spurious zeros
+    mixed in. If X = U S V^T (SVD), then X @ X.T = U S^2 U^T and
+    X.T @ X = V S^2 V^T -- same eigenvalues S^2, and V = X^T @ U / S.
+    """
+    n = standardized.shape[0]
+    gram = (standardized @ standardized.T) / (n - 1)
+    dual_eigenvalues, dual_eigenvectors = np.linalg.eigh(gram)
+    order = np.argsort(dual_eigenvalues)
+    dual_eigenvalues = dual_eigenvalues[order]
+    dual_eigenvectors = dual_eigenvectors[:, order]
+
+    # Effective rank: eigenvalues meaningfully above float noise relative to
+    # the largest one (mirrors numpy.linalg.matrix_rank's default tolerance),
+    # so the trivial exact-zero eigenvalue mean-centering always introduces
+    # (and any additional redundancy, e.g. duplicate reference embeddings)
+    # gets excluded rather than treated as a "real" low-variance direction.
+    tol = dual_eigenvalues[-1] * max(gram.shape) * np.finfo(np.float64).eps
+    support = dual_eigenvalues > tol
+    dual_eigenvalues = dual_eigenvalues[support]
+    dual_eigenvectors = dual_eigenvectors[:, support]
+
+    m = min(num_directions, dual_eigenvectors.shape[1])
+    dual_eigenvalues = dual_eigenvalues[:m]
+    dual_eigenvectors = dual_eigenvectors[:, :m]
+
+    if m == 0:
+        return dual_eigenvalues, np.zeros((standardized.shape[1], 0))
+
+    eigenvectors = (standardized.T @ dual_eigenvectors) / np.sqrt(dual_eigenvalues * (n - 1))
+    eigenvectors /= np.linalg.norm(eigenvectors, axis=0, keepdims=True)
+    return dual_eigenvalues, eigenvectors
 
 
 @dataclass(frozen=True)

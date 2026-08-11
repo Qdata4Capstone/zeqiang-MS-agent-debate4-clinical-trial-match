@@ -64,7 +64,7 @@ Method                  recall@50    recall@100   recall@200
 -------------------------------------------------------------
 clean (no attack)       0.7052       0.8941       0.9137
 poisoned, no defense    0.7052       0.8941       0.9137
-poisoned + DRS          0.6301       0.8190       0.8386
+poisoned + DRS          0.7052       0.8941       0.9137
 poisoned + L2-norm      0.7052       0.8941       0.9137
 poisoned + L2-distance  0.7052       0.8941       0.9137
 poisoned + perplexity   0.6190       0.8078       0.8275
@@ -104,7 +104,7 @@ demo_medqa_rag() {
 Method          Detect rate     Clean FPR       Attack success  Retrieval F1
 ------------------------------------------------------------------------------
 none            -               -               1.0000          0.3333
-drs             1.0000          0.0345          0.3333          0.0000
+drs             0.0000          0.0345          1.0000          0.3333
 l2_norm         0.3333          0.0690          0.6667          0.2353
 l2_distance     0.3333          0.0345          0.6667          0.2353
 perplexity      0.0000          0.0690          1.0000          0.3333

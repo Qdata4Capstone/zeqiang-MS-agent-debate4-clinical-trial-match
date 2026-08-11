@@ -156,10 +156,10 @@ python scripts/run_defense.py --config configs/minimal_medqaus_pubmed_contriever
 Method          Detect rate     Clean FPR       Attack success  Retrieval F1
 ------------------------------------------------------------------------------
 none            -               -               1.0000          0.3333
-drs             1.0000          0.0345          0.3333          0.0000
+drs             0.0000          0.0345          1.0000          0.3333
 l2_norm         0.3333          0.0690          0.6667          0.2353
 l2_distance     0.3333          0.0345          0.6667          0.2353
 perplexity      0.0000          0.0690          1.0000          0.3333
 ```
 
-(Real output from a tiny local smoke run — 3 targets, 300-doc PubMed corpus, not published numbers.) All four detectors fit on the same clean reference set, and `--method all` reuses one loaded `ContrieverEncoder` across all of them instead of reloading it per invocation. Retrieval precision/recall/F1 measure whether poison docs that survived filtering land in a target's top-`k` — they correctly go to 0 when a defense removes every poison doc (nothing left to retrieve), not when something is broken. Per-method `{method}_metrics.json`/`{method}_kept_poison.jsonl` are still written for each of the four, plus a combined `all_defenses_metrics.json`.
+(Real output from a tiny local smoke run — 3 targets, 300-doc PubMed corpus, not published numbers. DRS shows 0/3 detected here because 29 clean reference docs is too few relative to Contriever's 768-dim embedding space for DRS to have real detection power at this demo scale — see `drs_defense/README.md`'s "Few reference samples" note; it isn't over-flagging, which is what the pre-fix version of this table used to show.) All four detectors fit on the same clean reference set, and `--method all` reuses one loaded `ContrieverEncoder` across all of them instead of reloading it per invocation. Retrieval precision/recall/F1 measure whether poison docs that survived filtering land in a target's top-`k`; they'd correctly go to 0 if a defense removed every poison doc (nothing left to retrieve), not because something is broken. Per-method `{method}_metrics.json`/`{method}_kept_poison.jsonl` are still written for each of the four, plus a combined `all_defenses_metrics.json`.
