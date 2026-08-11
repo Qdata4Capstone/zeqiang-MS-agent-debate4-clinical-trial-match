@@ -216,6 +216,16 @@ A new use case is a new directory under `use-cases/<name>/`, following the patte
 
 This repo's DRS (Directional Relative Shifts) defense (`drs_defense/`) is a reference implementation of the algorithm from:
 
-> **Understanding Data Poisoning Attacks for RAG: Insights and Algorithms.** ICLR 2025 submission (under double-blind review at the time of writing). [openreview.net/forum?id=2aL6gcFX7q](https://openreview.net/forum?id=2aL6gcFX7q)
+> Xun Xian, Tong Wang, Liwen You, Yanjun Qi (2025). "Understanding Data Poisoning Attacks for RAG: Insights and Algorithms" (URL at: [https://openreview.net/forum?id=2aL6gcFX7q](https://openreview.net/forum?id=2aL6gcFX7q))
 
-If you use the DRS defense from this repo in your own work, please cite the paper via the OpenReview link above.
+If you use the DRS defense from this repo in your own work, please cite the paper:
+
+```bibtex
+@misc{xian2025understanding,
+  title        = {Understanding Data Poisoning Attacks for {RAG}: Insights and Algorithms},
+  author       = {Xian, Xun and Wang, Tong and You, Liwen and Qi, Yanjun},
+  year         = {2025},
+  howpublished = {OpenReview},
+  url          = {https://openreview.net/forum?id=2aL6gcFX7q},
+}
+```
