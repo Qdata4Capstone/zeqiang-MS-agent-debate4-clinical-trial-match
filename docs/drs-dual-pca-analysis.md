@@ -172,21 +172,52 @@ parameter in `poisonrag_experiment/drs.py` is correctly documented as a
 local ablation knob with no counterpart in the paper's formula.
 
 **Reference-set construction: one real deviation, in `trial_retrieval`
-only.** The paper's Algorithm 2 retrieves top-K clean documents for *every*
-query in the protected query set Q and pools them into one combined
-reference set, fitting a single DRS model shared across all protected
-queries. `medqa_rag`'s `run_defense.py` and `strategyqa_agent`'s
-`_fit_drs` both do this correctly (checked directly — both pool across all
-clean queries before fitting). `trial_retrieval`'s `apply_drs_defense`
-does not: it fits a *separate* DRS model per individual target patient,
-using only that one patient's own top-`ref_k` documents, never pooling
-across the other target patients. This structurally caps the achievable
-reference-set size at `ref_k` alone (20 by default) instead of
-`ref_k x num_targets`, and is very plausibly why the `n <= d` bug above was
-so easy to trigger there specifically — not flagged as something to fix
-here (it's a real design decision, not obviously wrong for a per-patient
-protection model), but worth knowing before assuming `trial_retrieval`'s
-DRS results are apples-to-apples with the paper's.
+only — now fixed as an opt-in flag and empirically confirmed to matter.**
+The paper's Algorithm 2 retrieves top-K clean documents for *every* query
+in the protected query set Q and pools them into one combined reference
+set, fitting a single DRS model shared across all protected queries.
+`medqa_rag`'s `run_defense.py` and `strategyqa_agent`'s `_fit_drs` both do
+this correctly (checked directly — both pool across all clean queries
+before fitting). `trial_retrieval`'s `apply_drs_defense` did not: it fit a
+*separate* DRS model per individual target patient, using only that one
+patient's own top-`ref_k` documents, never pooling across the other target
+patients — structurally capping the achievable reference-set size at
+`ref_k` alone (20 by default) instead of `ref_k x num_targets`, and very
+plausibly why the `n <= d` bug above was so easy to trigger there
+specifically.
+
+Added `apply_drs_defense_pooled` (paper-faithful Algorithm 2) alongside the
+existing per-query `apply_drs_defense`, selectable via a new
+`--drs_pool_reference` flag (not yet the default — see recommendation
+below), and compared both on the same real cached embeddings, 3 target
+patients, `--drs_quantile 0.99`:
+
+| `--drs_ref_k` | strategy | reference-set size | candidates flagged | poison docs caught | recall@50/100/200 |
+|---|---|---|---|---|---|
+| 20 | per-query | 20 (x3 separate models) | 5 | 0/3 | 0.7052/0.8941/0.9137 |
+| 20 | pooled | 60 (deduplicated) | 369 | 0/3 | 0.7052/0.8941/0.9137 |
+| 200 | per-query | 200 (x3 separate models) | 5,520 | 1/3 | 0.7052/0.8941/0.9137 |
+| 200 | pooled | 521 (deduplicated) | 6,061 | **3/3** | 0.7052/0.8941/0.9137 |
+
+At `ref_k=200`, pooling catches **every** poison document (vs. 1/3 for the
+per-query variant) while keeping recall *exactly* at the undefended
+baseline in all four conditions — the extra flags pooling produces (6,061
+vs. 5,520) land entirely on non-relevant documents, not on any of the 3
+patients' 28 true-positive qrels docs. This is a clean, real-world
+confirmation that the paper's actual reference-set design (pool across the
+whole protected query set) meaningfully outperforms the per-query variant
+this codebase originally shipped — not just architecturally closer to the
+paper, but empirically better on every axis measured here. At `ref_k=20`
+pooling still doesn't have enough reference documents to detect anything
+(0/3 either way), consistent with the statistical-power story above: more
+reference documents helps, but only once there are actually enough of
+them.
+
+**Recommendation:** switch `trial_retrieval`'s default to
+`--drs_pool_reference` (or make it the only behavior) given this result —
+left as an opt-in flag here rather than changed unilaterally, since
+flipping a script's default behavior is a decision worth confirming rather
+than a pure bug fix.
 
 **Reference-set size: `medqa_rag`'s real config matches the paper closely;
 `trial_retrieval`'s default doesn't, independent of the demo scaling

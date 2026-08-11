@@ -56,6 +56,15 @@ def parse_args():
     parser.add_argument("--drs_quantile", type=float, default=0.99)
     parser.add_argument("--drs_power", type=float, default=1.0)
     parser.add_argument(
+        "--drs_pool_reference",
+        action="store_true",
+        help="Fit one DRS model on clean reference documents pooled across all target queries "
+        "(the paper's actual Algorithm 2), instead of a separate model per target query using "
+        "only that query's own top --drs_ref_k docs (this script's original behavior). Pooling "
+        "gives DRS up to --drs_ref_k * --num_targets reference documents instead of "
+        "--drs_ref_k alone.",
+    )
+    parser.add_argument(
         "--compare_defenses",
         action="store_true",
         help="Also evaluate L2-norm, L2-distance, and perplexity baseline defenses alongside DRS, "
@@ -173,6 +182,65 @@ def apply_drs_defense(
             "flagged": flagged_doc_ids,
         }
 
+    return defended_rankings, drs_metadata
+
+
+def apply_drs_defense_pooled(
+    target_qids,
+    clean_rankings,
+    poisoned_rankings,
+    medcpt_index_clean,
+    medcpt_index_poisoned,
+    ref_k,
+    quantile,
+    num_directions,
+    power,
+):
+    """Paper-faithful Algorithm 2: retrieve top-`ref_k` clean documents for
+    *every* protected query, pool them into one combined, deduplicated
+    reference set, and fit a single shared DRS model applied to all target
+    queries -- as opposed to apply_drs_defense's per-query variant (a
+    separate model per target, using only that target's own top-`ref_k`
+    docs), which structurally caps the achievable reference-set size at
+    `ref_k` alone instead of up to `ref_k * len(target_qids)`."""
+    pooled_doc_ids = []
+    seen = set()
+    for qid in target_qids:
+        for doc_id, _ in clean_rankings[qid][:ref_k]:
+            if doc_id not in seen:
+                seen.add(doc_id)
+                pooled_doc_ids.append(doc_id)
+
+    clean_embeddings = [medcpt_index_clean.get_embedding(doc_id) for doc_id in pooled_doc_ids]
+    model, clean_scores, threshold = drs_threshold(
+        clean_embeddings=clean_embeddings,
+        quantile=quantile,
+        num_directions=num_directions,
+        power=power,
+    )
+
+    defended_rankings = {}
+    flagged_by_qid = {}
+    for qid in target_qids:
+        filtered = []
+        flagged_doc_ids = []
+        for doc_id, score in poisoned_rankings[qid]:
+            embedding = medcpt_index_poisoned.get_embedding(doc_id)
+            score_drs = drs_score(embedding, model)
+            if score_drs > threshold:
+                flagged_doc_ids.append({"doc_id": doc_id, "drs_score": score_drs})
+                continue
+            filtered.append((doc_id, score))
+        defended_rankings[qid] = filtered
+        flagged_by_qid[qid] = flagged_doc_ids
+
+    drs_metadata = {
+        "pooled_reference_size": len(pooled_doc_ids),
+        "num_directions": model["eigenvectors"].shape[1],
+        "threshold": threshold,
+        "clean_scores": clean_scores,
+        "flagged_by_qid": flagged_by_qid,
+    }
     return defended_rankings, drs_metadata
 
 
@@ -419,7 +487,8 @@ def main():
         bm25_weight=args.bm25_weight,
         dense_weight=args.dense_weight,
     )
-    defended_rankings, drs_metadata = apply_drs_defense(
+    drs_defense_fn = apply_drs_defense_pooled if args.drs_pool_reference else apply_drs_defense
+    defended_rankings, drs_metadata = drs_defense_fn(
         target_qids=target_qids,
         clean_rankings=clean_rankings,
         poisoned_rankings=poisoned_rankings,
