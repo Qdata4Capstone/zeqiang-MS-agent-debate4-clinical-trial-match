@@ -91,3 +91,43 @@ dispatch, or via test suite).
 - Some "dead" code may be intentionally kept for a not-yet-wired experiment
   (e.g., ablation flags). Where intent is unclear from the code alone, it
   will be flagged to the user rather than removed silently.
+
+## Outcome (implemented)
+
+Executed on 2026-08-10, against the current post-Phase-7a–7c structure
+(`drs_defense/`, `infra/`, `attacks/`, `defenses/`, `use-cases/*` — this
+spec's own paths above are stale, written before that rename). Method
+followed exactly: `vulture` (confidence 60, then 40 for a broader recheck)
+across every shared library and use case's code (tests/ excluded), every
+hit manually triaged against the checklist above before removal.
+
+Removed: the `perpel` known-removal (finally executed — flagged here since
+2026-08-08 but never actually done until this pass); a whole unused
+`Prompter` class (`use-cases/strategyqa_agent/ReAct/utils/prompter.py`);
+three unused, two of them provably broken (`MMLU_SPLIT_FILE`/
+`HOTPOTQA_SPLIT_FILE` undefined anywhere), leftover multi-task wrapper
+classes in `wrappers.py` (`HistoryWrapper`, `MMLUWrapper`,
+`HotPotQAWrapper`) plus their cascading-dead-only-callers
+(`f1_score`, `normalize_answer`, and the `re`/`string`/`pandas`/`Counter`
+imports that existed only to support them); an unused `ast` import and
+`get_time_info` method in `local_wikienv.py`, plus its cascading-dead
+`search_time`/`num_searches` instrumentation and `import time`.
+
+One real false positive caught and instructive: `infra/`'s
+`ollama_completion` flagged as unused when `infra/src` was scanned in
+isolation, but confirmed actively used (re-exported by
+`strategyqa_agent/ReAct/ollama_client.py`, tested twice, called directly)
+once `strategyqa_agent/ReAct` was included in the same `vulture` pass —
+exactly the "manual triage catches narrow-scope false positives" risk this
+spec anticipated, observed concretely rather than just theorized.
+
+Ambiguous-intent local variables in two otherwise-live scripts
+(`ReAct/eval.py`, `ReAct/run_strategyqa_inference.py`) were deliberately
+left alone per the "flag rather than remove silently" risk note above,
+not because they're false positives but because removing them adds little
+value against real (if small) risk of misreading intent in commented-out,
+actively-iterated-on code.
+
+All 86 tests (4 shared libraries + 3 use cases) still pass; a second
+`vulture` pass after the edits found no further cascading dead code.
+See commit `008f736`.
